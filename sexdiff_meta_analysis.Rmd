@@ -1,0 +1,521 @@
+---
+title: "microbiome meta-analysis to investigate sex difference in mice, 
+used SRS to normalize data, which used a deterministic process to sub-sample rather than randomly, better preserve the structure of microbiota profile"
+author: Judy (Jingdi) Li
+date: 2025/2
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("phyloseq")
+
+install.packages("remotes")
+remotes::install_github("jbisanz/qiime2R")
+####load library####
+library(phyloseq)
+library(ape)
+library(tidyr)
+library(qiime2R)
+library(vegan)
+library(ggplot2)
+library(picante)
+library(dplyr)
+library(tibble)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(esc)
+library(effectsize)
+library(SRS)
+library(reshape2)
+
+######load the object#####
+load("./newest_SRS.RData")
+
+######save the object######
+save.image("./newest_SRS.RData") 
+
+```
+
+```{r}
+####load data
+assign("dat33", qza_to_phyloseq(features = "./table_filt_decomtam33_V4.qza", 
+                                tree = "./asvs-tree_V4.qza", 
+                                taxonomy = "./classification.qza", 
+                                metadata = "./metadata_33.txt"))
+dat33 #3140 samples: 2887 samples+12+241
+#save(dat33, file = "./dataset_phyloseq.RData")
+dat <- data.frame(sample_data(dat33))
+write.csv(dat, "./metadata_dat33.csv")
+
+dat_new <- read.csv("./metadata_33.csv") ##after revising 
+sample_data(dat33) <- sample_data(dat_new)
+####number of samples not match as the metadata table,check
+# table <- read_qza("/Users/lijingdi/Downloads/Jan_project/final_33/table_filt_decomtam33_V4.qza") #4047 samples
+# metadat <- read.csv("/Users/lijingdi/Downloads/Jan_project/final_33/metadata_33.txt", sep = "\t", header = 1)
+# sample_ls <- colnames(table$data)
+# meta_ls <- metadat$run
+# matches <- intersect(sample_ls, meta_ls)
+# not_in_meta <- setdiff(sample_ls, meta_ls)
+# not_in_sample <- setdiff(meta_ls, sample_ls)
+# write.csv(not_in_meta, "/Users/lijingdi/Downloads/not_in_meta.csv") ###checked, all because of lack of metadata, excluded 1160 samples
+# write.csv(not_in_sample, "/Users/lijingdi/Downloads/not_in_sample.csv") ### need to check, why some samples not be included in qiime2 output
+# ###it is some sample names not matched with SRR; changed now
+# #table_old <- read_qza("/Users/lijingdi/Downloads/Jan_project/final_33/merged_data/merged_table33_V4.qza")
+# table_li2020 <- read_qza("/Users/lijingdi/Downloads/Jan_project/final_33/Li2020_table.qza")
+# View(table_li2020$data)
+# 
+# ####added back samples that not included because of name mis-match to dat33
+# dat33 #3140 samples
+```
+
+```{r studyID}
+study_ls <- unique(sample_data(dat33)$Authors) #23 studies
+study_ls
+```
+
+```{r study1}
+study <- "Ellis et al. 2021"
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(sample_name, host_sex) %>% summarise(n = n())
+
+```
+
+```{r study2}
+study <- "Lindheim et al. 2018" ##no treatment info in metadata, compare sex directly but may need to remove later 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(study_accession, host_sex) %>% summarise(n = n())
+```
+
+```{r study3}
+study <- "Pizarro et al. 2021"
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study4}
+study <- "Lyte et al. 2022"
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(host_diet, host_sex) %>% summarise(n = n())
+```
+
+```{r study5}
+study <- "Zou et al. 2021"
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study6}
+study <- "Song et al. 2021"
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study7}
+#study <- "Velasco et al. 2021"
+study <- study_ls[7]
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(strain, host_sex) %>% summarise(n = n())
+```
+
+```{r study8 Li et al. 2020 resolved: some samples are missing, they are removed because lack of sex information, exclude this study because lack of sample size enough for compare male vs. female in different subgroups}
+study <- study_ls[8] 
+study #"Li et al. 2020" 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+
+```
+
+```{r study9 Son et al. 2019}
+study <- study_ls[9] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study10 Cheema & Pluznick 2019}
+study <- study_ls[10] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment, host_sex) %>% summarise(n = n())
+```
+
+```{r study11 Zajac et al. 2022}
+study <- study_ls[11] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(genotype, host_sex) %>% summarise(n = n())
+```
+```{r study12 Sun et al. 2020}
+study <- study_ls[12] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study13 Kozik et al. 2019 resolved: has independent samples, longitudinal sampling}
+study <- study_ls[13] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+```{r study14 Tam et al. 2020}
+study <- study_ls[14] #"Smoke exposed, ovariectomy" and "ovariectomy" only females 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+```{r study15 Ramakrishna et al. 2020 resolved: error rasised for PD calculation}
+study <- study_ls[15] 
+study #"Ramakrishna et al. 2020", raremin<9 cause error
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment, host_sex) %>% summarise(n = n())
+```
+
+```{r study16 Song et al. 2020}
+study <- study_ls[16] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+```{r study17 Ibrahim et al. 2019}
+study <- study_ls[17] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study18 Strickland et al. 2021 solved: independent samples}
+study <- study_ls[18] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment, host_sex) %>% summarise(n = n())
+```
+
+```{r study19 Weng et al. 2019 resolved: error raised for APOE3_APP transgene -, due to PD calculation}
+study <- study_ls[19] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study20 Wolfe et al. 2020}
+study <- study_ls[20] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+```{r study21 Tashiro et al. 2020}
+study <- study_ls[21] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+```{r study22 Song et al. 2022}
+study <- study_ls[22] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment, host_sex) %>% summarise(n = n())
+```
+
+```{r study23 Gubert et al. 2022}
+study <- study_ls[23] 
+study 
+sub <- subset_samples(dat33, Authors == study)
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+```
+
+
+```{r update metadata}
+###if need revising metadata and decide on subgroups
+dat_new <- read.csv("./metadata_dat33.csv", header = 1, row.names = 1) ##after revising 
+sample_data(dat33) <- sample_data(dat_new)
+dat33
+```
+
+```{r calculate alpha diversity and beta dispersion}
+#dat_alpha <- data.frame()
+#tb_all <- tibble(distance=numeric(0),sd=numeric(0), metric=character(0), Sex=character(0), Authors=character(0), subgroup=character(0), n_male=numeric(0), n_female=numeric(0))
+
+#Ellis et al. 2021:sample_name; Lindheim et al. 2018: study_accession; Pizarro et al. 2021: experimental_treatment_raw
+#Lyte et al. 2022: host_diet; Zou et al. 2021: experimental_treatment_raw; Song et al. 2021: experimental_treatment_raw; Velasco et al. 2021:strain; Li et al. 2020: experimental_treatment_raw; Son et al. 2019: experimental_treatment_raw; Cheema & Pluznick 2019: experimental_treatment; Zajac et al. 2022: genotype; Sun et al. 2020: experimental_treatment_raw; Kozik et al. 2019: experimental_treatment_raw; Tam et al. 2020: experimental_treatment_raw; Ramakrishna et al. 2020: experimental_treatment; Song et al. 2020: experimental_treatment_raw; Ibrahim et al. 2019: experimental_treatment_raw; Weng et al. 2019: experimental_treatment_raw； Wolfe et al. 2020：experimental_treatment_raw; Tashiro et al. 2020:experimental_treatment_raw; Song et al. 2022: experimental_treatment; Gubert et al. 2022: experimental_treatment_raw
+
+group <- "experimental_treatment"
+for (subgroup in unique(sample_data_df[[group]])) {
+  sub_sub <- subset_samples(sub, get(group) == subgroup)
+  cat(subgroup, " starting calculating alpha diversity\n")
+  raremin <- min(sample_sums(sub_sub))
+  # if (raremin < 9) {
+  #   raremin <- 9} ## for Ramakrishna et al. 2020
+  otu <- tibble::rownames_to_column(as.data.frame(otu_table(sub_sub)), "Row") ###SRS function removes OTU names so adjust here
+  row.names(otu) <- otu$Row
+  otu$Row <- NULL
+  otu.srs <- SRS(otu, Cmin=raremin)
+  row.names(otu.srs) <- row.names(otu)
+  otu.srs <- otu_table(as.matrix(otu.srs), taxa_are_rows = TRUE)
+  sub_srs <- merge_phyloseq(phyloseq(otu.srs, 
+                                     sample_data(sub_sub), tax_table(sub_sub), phy_tree(sub_sub)))
+  PD_value <- tryCatch({
+    picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(sub_srs)))), tree = phy_tree(sub_srs))[, 1]
+  }, error = function(e) {
+    cat("Error in PD calculation for", subgroup, ": ", conditionMessage(e), "\n")
+    return("none")
+  })
+  
+  sub_alpha <- data.frame(
+    "Observed" = phyloseq::estimate_richness(sub_srs, measures = "Observed"),
+    "Chao1" = phyloseq::estimate_richness(sub_srs, measures = "Chao1"),
+    "Shannon" = phyloseq::estimate_richness(sub_srs, measures = "Shannon"),
+    "Simpson" = phyloseq::estimate_richness(sub_srs, measures = "Simpson"),
+    "PD" = PD_value, 
+    "Sex" = phyloseq::sample_data(sub_srs)$host_sex, 
+    "subgroup" = phyloseq::sample_data(sub_srs)[[group]], 
+    "Strain" = phyloseq::sample_data(sub_srs)$strain,
+    "tissue" = phyloseq::sample_data(sub_srs)$tissue,
+    "transmission" = phyloseq::sample_data(sub_srs)$transmission,
+    "age" = phyloseq::sample_data(sub_srs)$sampling_age,
+    "duration" = phyloseq::sample_data(sub_srs)$experimental_period,
+    "Authors" = phyloseq::sample_data(sub_srs)$Authors,
+    "Protocol" = phyloseq::sample_data(sub_srs)$Protocol,
+    "Acclimation" = phyloseq::sample_data(sub_srs)$acclimation_in_lab)
+  sub_alpha$Evenness <- sub_alpha$Shannon/log(sub_alpha$Observed)
+  if (!subgroup %in% unique(dat_alpha$subgroup)) {
+    dat_alpha <- rbind(dat_alpha, sub_alpha) 
+    cat(subgroup, " finished calculating alpha diversity\n")
+  }
+  
+
+  if(nsamples(sub_sub) < 2) {
+    cat(subgroup, " has fewer than 2 samples, skipping beta dispersion calculation \n")
+    next
+  }
+  
+  cat(subgroup, " starting calculating beta dispersion\n")
+      unifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=FALSE)
+      wunifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=T)
+      bray_dist = phyloseq::distance(sub_sub, method="bray")
+      jac_dist = phyloseq::distance(sub_sub, method="jaccard")
+      sample_data_df_sub <- data.frame(sample_data(sub_sub))
+      for (dist_name in c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
+        dist <- get(dist_name)
+        cat("Calculating ", dist_name, "\n")
+        beta_disp <- betadisper(dist, sample_data_df_sub$host_sex)
+        ###sample size of each sex
+        n_male <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "male",])
+        n_female <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "female",])
+        ###calculate the standard deviation
+        distance <- beta_disp$distances
+        sd_dispersion <- tapply(distance, sample_data_df_sub$host_sex, sd)
+        ###create a table with the distances and sd
+        tb <- tibble(
+          Sex = row.names(beta_disp$group.distances),
+          distance = as.numeric(beta_disp$group.distances),
+          sd = as.numeric(sd_dispersion),
+          metric = dist_name,
+          Authors = study,
+          subgroup = subgroup,
+          n_male = n_male,
+          n_female = n_female
+        )
+        tb_all <- rbind(tb_all, tb)
+        cat(subgroup, " finished calculating beta dispersion\n")
+  
+      }
+}
+
+sub_alpha
+tb
+
+dat_alpha_1 <- dat_alpha
+dat_alpha_1 %>% group_by(subgroup, Sex) %>% summarise(n = n(), )
+
+tb_all_1 <- tb_all
+tb_all_1 %>% group_by(subgroup, Sex) %>% summarise(n = n(), )
+
+```
+
+
+```{r Alpha-div ES calculation}
+dat_alpha$PD[dat_alpha$PD == "none"] <- NA
+dat_alpha$PD <- as.numeric(dat_alpha$PD)
+
+dat_alpha_long <- pivot_longer(dat_alpha, cols = c(Observed, Chao1.Chao1, Shannon, Simpson, PD, Evenness), names_to = "metric",
+               values_to = "value")
+dat_alpha_group <- dat_alpha_long %>%
+      group_by(across(all_of(c("Authors", "subgroup", "Sex", "metric")))) %>%
+      summarise(mean = mean(value), sd = sd(value), n = n()) %>%
+      pivot_wider(., names_from = c(Sex), values_from = c(mean, sd, n))
+####calculate ES for alpha-div
+head(dat_alpha_group)
+mod <- c("Authors", "metric", "subgroup")
+alpha_es <- dat_alpha_group %>% calculate_ES(mod) 
+alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+head(alpha_es) #132 ES for each metric
+alpha_es[is.infinite(alpha_es)]
+alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
+
+
+```
+
+
+```{r Alpha-div summary ES calculation}
+AlphaCombined <- tibble(Authors=character(0),stats=character(0),metric=character(0),ES=numeric(0),Variance=numeric(0), pval=numeric(0))
+
+for (i in unique(alpha_es$stats)) {
+    for (j in unique(alpha_es$metric)) {
+      subset_data <- alpha_es[alpha_es$stats == i & alpha_es$metric == j,]
+      if(nrow(subset_data) < 2) {
+        cat("not enough samples \n")
+        next
+      }
+        fit <- tryCatch({
+          rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), data = subset_data, method = "REML")
+        }, error = function(e) {
+          message("Error with ", i, ", ", j)
+          return(NULL)
+        })
+        
+        if(!is.null(fit)) {
+          AlphaCombined <- bind_rows(AlphaCombined, tibble(
+          Authors = "Combined",
+          stats = i, 
+          metric = j,
+          ES = fit$b,
+          Variance = (fit$se)^2,
+          pval = fit$pval
+     
+        ))
+      }
+    }
+}
+
+AlphaCombined
+
+AlphaCombined_sig <- 
+AlphaCombined %>% 
+  filter(pval < 0.05) 
+write.csv(AlphaCombined, "./results/SRS_data/AlphaCombined.csv")
+write.csv(AlphaCombined_sig, "./results/SRS_data/AlphaCombined_sig.csv")
+```
+
+
+```{r Alpha-div summary ES meta-meta not recommended as each alpha-div metrics gave specific info that is useful}
+```
+
+
+```{r Alpha-div ES visualization}
+######visualize forest plot, all ESs######
+color_pal <- c("#0072B2", "#D55E00", "#56B4E9", "#009E73", "#F0E442", "#CC79A7")
+alpha_es <- alpha_es %>%
+  mutate(metric = str_replace(metric, "Chao1.Chao1", "Chao1")) %>% 
+  mutate(metric = str_replace(metric, "Observed", "Richness")) %>%
+  mutate(metric = str_replace(metric, "PD", "Faith's PD"))
+alpha_es$metric <- factor(alpha_es$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+alpha_es$stats <- factor(alpha_es$stats, levels=c("lnRR", "lnCVR", "lnVR"))
+
+
+
+p1<- alpha_es %>%
+  ggplot(aes(x = yi, y = factor(Authors))) +
+  geom_vline(xintercept = 0, linetype="dashed", color="grey50") +
+  geom_errorbarh(aes(xmin = yi-(1.96*sqrt(vi)), xmax = yi+(1.96*sqrt(vi)), height = 0)) +
+  geom_point(shape = 16, aes(color=metric)) + 
+  scale_color_manual(values = color_pal) + 
+  facet_grid(rows = vars(stats), cols = vars(metric), scales="free") +
+  theme_bw() +
+  theme_MicrobeR() +
+  #  theme(panel.border = element_blank(), axis.line = element_line()) +
+  theme(axis.text.x=element_text(angle=45, hjust=1), text = element_text(size = 20), 
+        axis.text.y = element_blank(), legend.position = "right") +
+  #        axis.text.y = element_blank(), strip.text.y = element_blank()) + ###no strip text on y axis
+#  guides(color = guide_legend(ncol=2), size = guide_legend(ncol=2)) + 
+  labs(color = "Diversity metric", x = "Effect size", y = "Study", size = "Sample size", title = "Microbiome alpha diversity") 
+
+### summary es, plot
+AlphaCombined$metric <- factor(AlphaCombined$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+AlphaCombined$stats <- factor(AlphaCombined$stats, levels=c("lnRR", "lnCVR", "lnVR"))
+
+p2 <- AlphaCombined %>%
+  mutate(Study = "Summary") %>%
+  ggplot(aes(x = ES, y = Study)) +
+  geom_vline(xintercept = 0, linetype="dashed", color="grey50") +
+  geom_point(shape = 18, size = 8) +
+  #  scale_color_manual(values = color_pal) + 
+  geom_errorbar(aes(xmin = ES-(1.96*sqrt(Variance)), xmax = ES+(1.96*sqrt(Variance)), width = 1)) +
+  labs(y = "summary", x = "Effect size") +
+  facet_grid(cols = vars(metric), rows = vars(stats), scales = "free") + 
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=45, hjust=1), text = element_text(size = 20), 
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.text.y = element_blank())
+#        strip.text = element_blank(), 
+#        axis.text.y = element_blank(), strip.text.y = element_blank())
+
+
+```
+
+
+```{r beta dispersion ES calculation}
+###beta-dispersion
+head(tb_all)
+mod <- c("Authors", "metric", "subgroup")
+tb_all_long <- tb_all %>%
+  pivot_wider(., names_from = Sex, values_from = c(distance, sd)) %>%
+  rename(mean_male = distance_male,
+         mean_female = distance_female,
+         sd_male = sd_male,
+         sd_female = sd_female)
+
+#calculate hedge's g using escalc
+calculate_smd <- function(dat, mod, metric=c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
+  beta_smd <- data.frame(CN=numeric(0), EN=numeric(0),
+                       yi=numeric(0), vi=numeric(0), Authors=character(0), metric=character(0))
+  for (i in unique(dat$metric)) {
+      dat_sub <- dat[dat$metric == i,]
+      add_smd <- escalc(measure = "SMD", m1i=mean_male, m2i=mean_female, sd1i=sd_male, sd2i=sd_female, n1i=n_male, n2i=n_female, data=dat_sub, vtype = "UB")
+      beta_smd <- rbind(beta_smd, add_smd)
+  }
+  return(beta_smd)
+}
+
+
+tb_all_long %>% calculate_smd()
+
+
+
+
+```
+
+
