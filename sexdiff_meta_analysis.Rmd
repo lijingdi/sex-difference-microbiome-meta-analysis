@@ -45,6 +45,7 @@ save.image("./newest_SRS.RData")
 
 ```
 
+
 ```{r}
 ####load data
 assign("dat33", qza_to_phyloseq(features = "./table_filt_decomtam33_V4.qza", 
@@ -385,12 +386,20 @@ alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
 head(alpha_es) #132 ES for each metric
 alpha_es[is.infinite(alpha_es)]
 alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
-
+write.csv(alpha_es, "./results/SRS_data/alpha_es.csv")
 
 ```
 
 
 ```{r Alpha-div summary ES calculation}
+
+alpha_es <- alpha_es %>%
+  mutate(metric = str_replace(metric, "Chao1.Chao1", "Chao1")) %>% 
+  mutate(metric = str_replace(metric, "Observed", "Richness")) %>%
+  mutate(metric = str_replace(metric, "PD", "Faith's PD"))
+alpha_es$metric <- factor(alpha_es$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+alpha_es$stats <- factor(alpha_es$stats, levels=c("lnRR", "lnCVR", "lnVR"))
+
 AlphaCombined <- tibble(Authors=character(0),stats=character(0),metric=character(0),ES=numeric(0),Variance=numeric(0), pval=numeric(0))
 
 for (i in unique(alpha_es$stats)) {
@@ -437,21 +446,14 @@ write.csv(AlphaCombined_sig, "./results/SRS_data/AlphaCombined_sig.csv")
 
 ```{r Alpha-div ES visualization}
 ######visualize forest plot, all ESs######
-color_pal <- c("#0072B2", "#D55E00", "#56B4E9", "#009E73", "#F0E442", "#CC79A7")
-alpha_es <- alpha_es %>%
-  mutate(metric = str_replace(metric, "Chao1.Chao1", "Chao1")) %>% 
-  mutate(metric = str_replace(metric, "Observed", "Richness")) %>%
-  mutate(metric = str_replace(metric, "PD", "Faith's PD"))
-alpha_es$metric <- factor(alpha_es$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
-alpha_es$stats <- factor(alpha_es$stats, levels=c("lnRR", "lnCVR", "lnVR"))
-
+color_pal <- c("#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9")
 
 
 p1<- alpha_es %>%
   ggplot(aes(x = yi, y = factor(Authors))) +
   geom_vline(xintercept = 0, linetype="dashed", color="grey50") +
   geom_errorbarh(aes(xmin = yi-(1.96*sqrt(vi)), xmax = yi+(1.96*sqrt(vi)), height = 0)) +
-  geom_point(shape = 16, aes(color=metric)) + 
+  geom_point(shape=21, aes(color=metric)) + 
   scale_color_manual(values = color_pal) + 
   facet_grid(rows = vars(stats), cols = vars(metric), scales="free") +
   theme_bw() +
@@ -498,24 +500,109 @@ tb_all_long <- tb_all %>%
          sd_male = sd_male,
          sd_female = sd_female)
 
+tb_all_long %>%
+  filter(n_male == 0 | n_female == 0) ##some subgroups have n_male or n_female equals to 0
+  
+
 #calculate hedge's g using escalc
-calculate_smd <- function(dat, mod, metric=c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
-  beta_smd <- data.frame(CN=numeric(0), EN=numeric(0),
-                       yi=numeric(0), vi=numeric(0), Authors=character(0), metric=character(0))
-  for (i in unique(dat$metric)) {
-      dat_sub <- dat[dat$metric == i,]
-      add_smd <- escalc(measure = "SMD", m1i=mean_male, m2i=mean_female, sd1i=sd_male, sd2i=sd_female, n1i=n_male, n2i=n_female, data=dat_sub, vtype = "UB")
-      beta_smd <- rbind(beta_smd, add_smd)
-  }
-  return(beta_smd)
+beta_es <- escalc(measure = "SMD", m1i=mean_male, m2i=mean_female, sd1i=sd_male, sd2i=sd_female, n1i=n_male, n2i=n_female, 
+       data=tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ], vtype = "UB")
+
+class(beta_es)
+beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+write.csv(beta_es, "./results/SRS_data/beta_es.csv")
+
+```
+
+
+```{r beta dispersion summary ES calculation}
+beta_es <- data.frame(beta_es) %>%
+  mutate(metric = str_replace(metric, "wunifrac_dist", "Weighted Unifrac")) %>%
+  mutate(metric = str_replace(metric, "unifrac_dist", "Unweighted Unifrac")) %>% 
+  mutate(metric = str_replace(metric, "bray_dist", "Bray-Curtis")) %>%
+  mutate(metric = str_replace(metric, "jac_dist", "Jaccard"))
+beta_es$metric <- factor(beta_es$metric, levels=c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+
+
+betaCombined <- tibble(Authors=character(0),metric=character(0),ES=numeric(0),Variance=numeric(0), pval=numeric(0))
+
+for (i in unique(beta_es$metric)) {
+    subset_data <- beta_es[beta_es$metric == i,]
+    fit <- tryCatch({
+      rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), data = subset_data, method = "REML")
+        }, error = function(e) {
+        message("Error with ", i, ", ", j)
+          return(NULL)
+        })
+        
+      if(!is.null(fit)) {
+        betaCombined <- bind_rows(betaCombined, tibble(
+        Authors = "Combined",
+        metric = i,
+        ES = fit$b,
+        Variance = (fit$se)^2,
+        pval = fit$pval
+     
+        ))
+      }
 }
 
+betaCombined
 
-tb_all_long %>% calculate_smd()
-
-
+betaCombined %>% 
+  filter(pval < 0.05) 
+write.csv(betaCombined, "./results/SRS_data/betaCombined.csv")
 
 
 ```
 
+
+```{r beta dispersion ES visualization}
+
+color_pal2 <- c("#377EB8", "#FF7F00", "#4DAF4A", "#984EA3")
+p1<- beta_es %>%
+  ggplot(aes(x = yi, y = factor(Authors))) +
+  geom_vline(xintercept = 0, linetype="dashed", color="grey50") +
+  geom_errorbarh(aes(xmin = yi-(1.96*sqrt(vi)), xmax = yi+(1.96*sqrt(vi)), height = 0)) +
+  geom_point(shape = 21, aes(color=metric)) + 
+  scale_color_manual(values = color_pal2) + 
+  facet_grid(cols = vars(metric), scales="free") +
+  theme_bw() +
+  theme_MicrobeR() +
+  #  theme(panel.border = element_blank(), axis.line = element_line()) +
+  theme(axis.text.x=element_text(angle=45, hjust=1), text = element_text(size = 20), 
+        axis.text.y = element_blank(), legend.position = "right") +
+  #        axis.text.y = element_blank(), strip.text.y = element_blank()) + ###no strip text on y axis
+#  guides(color = guide_legend(ncol=2), size = guide_legend(ncol=2)) + 
+  labs(color = "Metric", x = "Effect size", y = "Study", size = "Sample size", title = "Microbiome beta dispersion") 
+
+
+### summary es, plot
+
+betaCombined$metric <- factor(betaCombined$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+
+p2 <- betaCombined %>%
+  mutate(Study = "Summary") %>%
+  ggplot(aes(x = ES, y = Study)) +
+  geom_vline(xintercept = 0, linetype="dashed", color="grey50") +
+  geom_point(shape = 18, size = 8) + 
+  #  scale_color_manual(values = color_pal) + 
+  geom_errorbar(aes(xmin = ES-(1.96*sqrt(Variance)), xmax = ES+(1.96*sqrt(Variance)), width = 1)) +
+  labs(y = "summary", x = "Effect size") +
+  facet_grid(cols = vars(metric), scales = "free") + 
+  theme_bw() +
+  theme(axis.text.x=element_text(angle=45, hjust=1), text = element_text(size = 20), 
+        panel.grid = element_blank(), panel.border = element_blank(),
+        axis.text.y = element_blank())
+#        strip.text = element_blank(), 
+#        axis.text.y = element_blank(), strip.text.y = element_blank())
+
+
+```
+
+
+```{r Alpha-div ES, try to stratefy treatment groups}
+
+
+```
 
