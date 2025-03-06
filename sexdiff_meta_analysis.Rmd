@@ -440,9 +440,84 @@ write.csv(AlphaCombined_sig, "./results/SRS_data/AlphaCombined_sig.csv")
 ```
 
 
-```{r Alpha-div summary ES meta-meta not recommended as each alpha-div metrics gave specific info that is useful}
+```{r load orchaRd 2.0 package}
+devtools::install_github("daniel1noble/orchaRd", ref = "main", force = TRUE)
+pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, orchaRd, emmeans,
+    ape, phytools, flextable)
+
 ```
 
+
+```{r meta-meta model lnCVR Alpha-div ES visualized using orchaRd}
+###heteroscedastic model
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
+plot(fitted(fit_he), residuals(fit_he))
+orchaRd::mod_results(fit_he, mod="1", group = "Authors")
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
+orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnCVR")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnCVR")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
+plot(fitted(fit_ho), residuals(fit_ho))
+anova(fit_ho, fit_he) ##no significant difference between the models?
+
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
+orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnCVR")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnCVR")
+
+```
+
+```{r meta-meta model lnVR Alpha-div ES visualized using orchaRd}
+###heteroscedastic model
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnVR",], method = "REML")
+plot(fitted(fit_he), residuals(fit_he))
+orchaRd::mod_results(fit_he, mod="1", group = "Authors")
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
+orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnVR")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnVR")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnVR",], method = "REML")
+plot(fitted(fit_ho), residuals(fit_ho))
+anova(fit_ho, fit_he) 
+
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
+orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnVR")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnVR")
+
+```
+```{r meta-meta model lnRR Alpha-div ES visualized using orchaRd}
+###heteroscedastic model
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnRR",], method = "REML") ##raise error, cannot achieve convergence 
+plot(fitted(fit_he), residuals(fit_he))
+orchaRd::mod_results(fit_he, mod="1", group = "Authors")
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
+orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnRR")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnRR",], method = "REML")
+#plot(fitted(fit_ho), residuals(fit_ho))
+#anova(fit_ho, fit_he) 
+
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
+orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
+
+```
 
 ```{r Alpha-div ES visualization}
 ######visualize forest plot, all ESs######
@@ -556,6 +631,29 @@ write.csv(betaCombined, "./results/SRS_data/betaCombined.csv")
 
 ```
 
+```{r Beta dispersion meta-meta model and ES visualized using orchaRd}
+###heteroscedastic model
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = beta_es, method = "REML")
+plot(fitted(fit_he), residuals(fit_he))
+orchaRd::mod_results(fit_he, mod="1", group = "Authors")
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
+orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "SMD")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "SMD")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+              data = beta_es, method = "REML")
+plot(fitted(fit_ho), residuals(fit_ho))
+anova(fit_ho, fit_he) 
+
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
+orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "SMD")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "SMD")
+
+```
 
 ```{r beta dispersion ES visualization}
 
@@ -602,6 +700,12 @@ p2 <- betaCombined %>%
 
 
 ```{r Alpha-div ES, try to stratefy treatment groups}
+head(alpha_es)
+unique(alpha_es$subgroup)
+
+```
+
+```{r }
 
 
 ```
