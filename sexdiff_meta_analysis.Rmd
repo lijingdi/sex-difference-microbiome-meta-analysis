@@ -83,7 +83,7 @@ study_ls <- unique(sample_data(dat33)$Authors) #23 studies
 study_ls
 ```
 
-```{r study1}
+```{r study1 Ellis et al. 2021}
 study <- "Ellis et al. 2021"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
@@ -91,42 +91,42 @@ sample_data_df %>% group_by(sample_name, host_sex) %>% summarise(n = n())
 
 ```
 
-```{r study2}
+```{r study2 Lindheim et al. 2018}
 study <- "Lindheim et al. 2018" ##no treatment info in metadata, compare sex directly but may need to remove later 
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(study_accession, host_sex) %>% summarise(n = n())
 ```
 
-```{r study3}
+```{r study3 Pizarro et al. 2021}
 study <- "Pizarro et al. 2021"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
 
-```{r study4}
+```{r study4 Lyte et al. 2022}
 study <- "Lyte et al. 2022"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(host_diet, host_sex) %>% summarise(n = n())
 ```
 
-```{r study5}
+```{r study5 Zou et al. 2021}
 study <- "Zou et al. 2021"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
 
-```{r study6}
+```{r study6 Song et al. 2021}
 study <- "Song et al. 2021"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
 
-```{r study7}
+```{r study7 Velasco et al. 2021}
 #study <- "Velasco et al. 2021"
 study <- study_ls[7]
 sub <- subset_samples(dat33, Authors == study)
@@ -164,7 +164,7 @@ study <- study_ls[11]
 study 
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
-sample_data_df %>% group_by(genotype, host_sex) %>% summarise(n = n())
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
 ```{r study12 Sun et al. 2020}
 study <- study_ls[12] 
@@ -271,9 +271,9 @@ dat33
 #tb_all <- tibble(distance=numeric(0),sd=numeric(0), metric=character(0), Sex=character(0), Authors=character(0), subgroup=character(0), n_male=numeric(0), n_female=numeric(0))
 
 #Ellis et al. 2021:sample_name; Lindheim et al. 2018: study_accession; Pizarro et al. 2021: experimental_treatment_raw
-#Lyte et al. 2022: host_diet; Zou et al. 2021: experimental_treatment_raw; Song et al. 2021: experimental_treatment_raw; Velasco et al. 2021:strain; Li et al. 2020: experimental_treatment_raw; Son et al. 2019: experimental_treatment_raw; Cheema & Pluznick 2019: experimental_treatment; Zajac et al. 2022: genotype; Sun et al. 2020: experimental_treatment_raw; Kozik et al. 2019: experimental_treatment_raw; Tam et al. 2020: experimental_treatment_raw; Ramakrishna et al. 2020: experimental_treatment; Song et al. 2020: experimental_treatment_raw; Ibrahim et al. 2019: experimental_treatment_raw; Weng et al. 2019: experimental_treatment_raw； Wolfe et al. 2020：experimental_treatment_raw; Tashiro et al. 2020:experimental_treatment_raw; Song et al. 2022: experimental_treatment; Gubert et al. 2022: experimental_treatment_raw
+#Lyte et al. 2022: host_diet; Zou et al. 2021: experimental_treatment_raw; Song et al. 2021: experimental_treatment_raw; Velasco et al. 2021:strain; Li et al. 2020: experimental_treatment_raw; Son et al. 2019: experimental_treatment_raw; Cheema & Pluznick 2019: experimental_treatment; Zajac et al. 2022: experimental_treatment_raw; Sun et al. 2020: experimental_treatment_raw; Kozik et al. 2019: experimental_treatment_raw; Tam et al. 2020: experimental_treatment_raw; Ramakrishna et al. 2020: experimental_treatment; Song et al. 2020: experimental_treatment_raw; Ibrahim et al. 2019: experimental_treatment_raw; Weng et al. 2019: experimental_treatment_raw； Wolfe et al. 2020：experimental_treatment_raw; Tashiro et al. 2020:experimental_treatment_raw; Song et al. 2022: experimental_treatment; Gubert et al. 2022: experimental_treatment_raw
 
-group <- "experimental_treatment"
+group <- "experimental_treatment_raw"
 for (subgroup in unique(sample_data_df[[group]])) {
   sub_sub <- subset_samples(sub, get(group) == subgroup)
   cat(subgroup, " starting calculating alpha diversity\n")
@@ -383,8 +383,7 @@ head(dat_alpha_group)
 mod <- c("Authors", "metric", "subgroup")
 alpha_es <- dat_alpha_group %>% calculate_ES(mod) 
 alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
-head(alpha_es) #132 ES for each metric
-alpha_es[is.infinite(alpha_es)]
+head(alpha_es) #142 ES per metric per stats
 alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
 write.csv(alpha_es, "./results/SRS_data/alpha_es.csv")
 
@@ -455,7 +454,7 @@ fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnCVR")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnCVR")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnCVR")
 
 ###homoscedastic model
@@ -467,10 +466,11 @@ anova(fit_ho, fit_he) ##no significant difference between the models?
 orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
 orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
-orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnCVR")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnCVR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnCVR")
 
 ```
+
 
 ```{r meta-meta model lnVR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
@@ -479,7 +479,7 @@ fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnVR")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnVR")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnVR")
 
 ###homoscedastic model
@@ -491,18 +491,20 @@ anova(fit_ho, fit_he)
 orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
 orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
-orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnVR")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnVR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnVR")
 
 ```
+
+
 ```{r meta-meta model lnRR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
 fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
-              data = alpha_es[alpha_es$stats == "lnRR",], method = "REML") ##raise error, cannot achieve convergence 
+              data = alpha_es[alpha_es$stats == "lnRR",], method = "REML") 
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnRR")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnRR")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
 
 ###homoscedastic model
@@ -514,7 +516,7 @@ fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), m
 orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
 orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
-orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
 
 ```
@@ -638,7 +640,7 @@ fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "SMD")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "SMD")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "SMD")
 
 ###homoscedastic model
@@ -650,7 +652,7 @@ anova(fit_ho, fit_he)
 orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
 orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
-orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "SMD")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "SMD")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "SMD")
 
 ```
@@ -677,7 +679,7 @@ p1<- beta_es %>%
 
 ### summary es, plot
 
-betaCombined$metric <- factor(betaCombined$metric, levels=c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+betaCombined$metric <- factor(betaCombined$metric, levels=c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
 
 p2 <- betaCombined %>%
   mutate(Study = "Summary") %>%
@@ -701,12 +703,18 @@ p2 <- betaCombined %>%
 
 ```{r Alpha-div ES, try to stratefy treatment groups}
 head(alpha_es)
+alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
+alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(alpha_es, "./results/SRS_data/alpha_es.csv")
 unique(alpha_es$subgroup)
 
 ```
 
-```{r }
-
+```{r beta dispersion ES, stratefy treatment groups}
+head(beta_es)
+beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"], "_cecal")
+beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(beta_es, "./results/SRS_data/beta_es.csv")
 
 ```
 
