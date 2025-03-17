@@ -312,48 +312,48 @@ for (subgroup in unique(sample_data_df[[group]])) {
     "Protocol" = phyloseq::sample_data(sub_srs)$Protocol,
     "Acclimation" = phyloseq::sample_data(sub_srs)$acclimation_in_lab)
   sub_alpha$Evenness <- sub_alpha$Shannon/log(sub_alpha$Observed)
-  if (!subgroup %in% unique(dat_alpha$subgroup)) {
+#  if (!subgroup %in% unique(dat_alpha$subgroup)) { ###this will omit some control groups
     dat_alpha <- rbind(dat_alpha, sub_alpha) 
     cat(subgroup, " finished calculating alpha diversity\n")
-  }
+#  }
   
 
-  if(nsamples(sub_sub) < 2) {
-    cat(subgroup, " has fewer than 2 samples, skipping beta dispersion calculation \n")
-    next
-  }
-  
-  cat(subgroup, " starting calculating beta dispersion\n")
-      unifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=FALSE)
-      wunifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=T)
-      bray_dist = phyloseq::distance(sub_sub, method="bray")
-      jac_dist = phyloseq::distance(sub_sub, method="jaccard")
-      sample_data_df_sub <- data.frame(sample_data(sub_sub))
-      for (dist_name in c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
-        dist <- get(dist_name)
-        cat("Calculating ", dist_name, "\n")
-        beta_disp <- betadisper(dist, sample_data_df_sub$host_sex)
-        ###sample size of each sex
-        n_male <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "male",])
-        n_female <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "female",])
-        ###calculate the standard deviation
-        distance <- beta_disp$distances
-        sd_dispersion <- tapply(distance, sample_data_df_sub$host_sex, sd)
-        ###create a table with the distances and sd
-        tb <- tibble(
-          Sex = row.names(beta_disp$group.distances),
-          distance = as.numeric(beta_disp$group.distances),
-          sd = as.numeric(sd_dispersion),
-          metric = dist_name,
-          Authors = study,
-          subgroup = subgroup,
-          n_male = n_male,
-          n_female = n_female
-        )
-        tb_all <- rbind(tb_all, tb)
-        cat(subgroup, " finished calculating beta dispersion\n")
-  
-      }
+  # if(nsamples(sub_sub) < 2) {
+  #   cat(subgroup, " has fewer than 2 samples, skipping beta dispersion calculation \n")
+  #   next
+  # }
+  # 
+  # cat(subgroup, " starting calculating beta dispersion\n")
+  #     unifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=FALSE)
+  #     wunifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=T)
+  #     bray_dist = phyloseq::distance(sub_sub, method="bray")
+  #     jac_dist = phyloseq::distance(sub_sub, method="jaccard")
+  #     sample_data_df_sub <- data.frame(sample_data(sub_sub))
+  #     for (dist_name in c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
+  #       dist <- get(dist_name)
+  #       cat("Calculating ", dist_name, "\n")
+  #       beta_disp <- betadisper(dist, sample_data_df_sub$host_sex)
+  #       ###sample size of each sex
+  #       n_male <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "male",])
+  #       n_female <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "female",])
+  #       ###calculate the standard deviation
+  #       distance <- beta_disp$distances
+  #       sd_dispersion <- tapply(distance, sample_data_df_sub$host_sex, sd)
+  #       ###create a table with the distances and sd
+  #       tb <- tibble(
+  #         Sex = row.names(beta_disp$group.distances),
+  #         distance = as.numeric(beta_disp$group.distances),
+  #         sd = as.numeric(sd_dispersion),
+  #         metric = dist_name,
+  #         Authors = study,
+  #         subgroup = subgroup,
+  #         n_male = n_male,
+  #         n_female = n_female
+  #       )
+  #       tb_all <- rbind(tb_all, tb)
+  #       cat(subgroup, " finished calculating beta dispersion\n")
+  # 
+  #     }
 }
 
 sub_alpha
@@ -383,9 +383,9 @@ head(dat_alpha_group)
 mod <- c("Authors", "metric", "subgroup")
 alpha_es <- dat_alpha_group %>% calculate_ES(mod) 
 alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
-head(alpha_es) #142 ES per metric per stats
+head(alpha_es) #158 ES per metric per stats
 alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
-write.csv(alpha_es, "./results/SRS_data/alpha_es.csv")
+write.csv(alpha_es, "./results/SRS_data/alpha_es_new.csv")
 
 ```
 
@@ -449,7 +449,7 @@ pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, orchaRd, emmeans,
 
 ```{r meta-meta model lnCVR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
-fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
@@ -458,8 +458,9 @@ p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnCVR"
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnCVR")
 
 ###homoscedastic model
-fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
+
 plot(fitted(fit_ho), residuals(fit_ho))
 anova(fit_ho, fit_he) ##no significant difference between the models?
 
@@ -469,12 +470,21 @@ orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnCVR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnCVR")
 
+
+V_alpha_es <- make_VCV_matrix(data = alpha_es[alpha_es$stats == "lnCVR",],
+V = "vi", obs = "X", cluster = "subgroup",
+type = "vcv", rho = 0.5)
+fit_ho <- rma.mv(yi, V_alpha_es, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
 ```
 
 
 ```{r meta-meta model lnVR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
-fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnVR",], method = "REML")
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
@@ -483,7 +493,7 @@ p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnVR")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnVR")
 
 ###homoscedastic model
-fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnVR",], method = "REML")
 plot(fitted(fit_ho), residuals(fit_ho))
 anova(fit_ho, fit_he) 
@@ -494,12 +504,21 @@ orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnVR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnVR")
 
+alpha_es$X <- row.names(alpha_es)
+V_alpha_es <- make_VCV_matrix(data = alpha_es[alpha_es$stats == "lnVR",],
+V = "vi", obs = "X", cluster = "subgroup",
+type = "vcv", rho = 0.5)
+fit_ho <- rma.mv(yi, V_alpha_es, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnVR",], method = "REML")
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+
 ```
 
 
 ```{r meta-meta model lnRR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
-fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnRR",], method = "REML") 
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
@@ -508,7 +527,7 @@ p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnRR")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
 
 ###homoscedastic model
-fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnRR",], method = "REML")
 #plot(fitted(fit_ho), residuals(fit_ho))
 #anova(fit_ho, fit_he) 
@@ -518,6 +537,14 @@ orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
 p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
+
+V_alpha_es <- make_VCV_matrix(data = alpha_es[alpha_es$stats == "lnRR",],
+V = "vi", obs = "X", cluster = "subgroup",
+type = "vcv", rho = 0.5)
+fit_ho <- rma.mv(yi, V_alpha_es, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
+              data = alpha_es[alpha_es$stats == "lnRR",], method = "REML")
+orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
 ```
 
@@ -600,6 +627,7 @@ beta_es <- data.frame(beta_es) %>%
   mutate(metric = str_replace(metric, "jac_dist", "Jaccard"))
 beta_es$metric <- factor(beta_es$metric, levels=c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
 
+beta_es <- read.csv("./results/SRS_data/beta_es.csv", header=1)
 
 betaCombined <- tibble(Authors=character(0),metric=character(0),ES=numeric(0),Variance=numeric(0), pval=numeric(0))
 
@@ -644,7 +672,7 @@ p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "SMD")
 orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "SMD")
 
 ###homoscedastic model
-fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = beta_es, method = "REML")
 plot(fitted(fit_ho), residuals(fit_ho))
 anova(fit_ho, fit_he) 
@@ -654,6 +682,19 @@ orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
 p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "SMD")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "SMD")
+
+
+###adding the VCV matrix
+beta_es$X <- row.names(beta_es)
+V_beta_es <- make_VCV_matrix(data = beta_es,
+V = "vi", obs = "X", cluster = "subgroup",
+type = "vcv", rho = 0.5)
+
+beta_ho_vcv <- rma.mv(yi, V_beta_es, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
+              data = beta_es, method = "REML")
+orchaRd::mod_results(beta_ho_vcv, mod="1", group = "Authors")
+orchaRd::mod_results(beta_ho_vcv, mod="metric", group = "Authors")
+orchaRd::orchard_plot(beta_ho_vcv, mod = "metric", group = "Authors", xlab = "SMD")
 
 ```
 
@@ -701,20 +742,56 @@ p2 <- betaCombined %>%
 ```
 
 
-```{r Alpha-div ES, try to stratefy treatment groups}
+```{r Alpha-div ES stratefy treatment groups}
 head(alpha_es)
 alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
 alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
-write.csv(alpha_es, "./results/SRS_data/alpha_es.csv")
+write.csv(alpha_es, "./results/SRS_data/alpha_es_new.csv")
 unique(alpha_es$subgroup)
+
+###after manually decide and add subgroups
+alpha_es <- read.csv("./results/SRS_data/alpha_es_new.csv", header = 1) ###now alpha_es has wider categories of groups
+alpha_es$group_general[alpha_es$group_general == "drug treatment "] <- "drug treatment"
+alpha_es$genotype_intervention <- ifelse(grepl("genotype", alpha_es$group_general), "yes", "no")
+alpha_es$hormonal_intervention <- ifelse(grepl("hormonal", alpha_es$group_general), "yes", "no")
+alpha_es$colitis_intervention <- ifelse(grepl("colitis", alpha_es$group_general), "yes", "no")
+alpha_es$dietary_intervention <- ifelse(grepl("dietary", alpha_es$group_general), "yes", "no")
+alpha_es$control <- ifelse(grepl("control", alpha_es$group_general), "control", "treatment")
+
+###consider adding a VCV matrix to account for the dependence of variation based on subgroups
+#install_github("daniel1noble/metaAidR")
+library(metaAidR)
+# V_alpha_es_lncvr <- make_VCV_matrix(data = alpha_es[alpha_es$stats == "lnCVR",],
+# V = "vi", obs = "X", cluster = "subgroup",
+# type = "vcv", rho = 0.5)
+
+mod_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~tissue -1,data = alpha_es[alpha_es$stats == "lnRR" & alpha_es$metric == "Faith's PD",], method = "REML")
+orchaRd::mod_results(mod_ho, mod="1", group = "Authors")
+orchaRd::mod_results(mod_ho, mod="tissue", group = "Authors")
+p1 <- orchaRd::orchard_plot(mod_ho, mod = "tissue", group = "Authors", xlab = "lnRR")
+
+
 
 ```
 
-```{r beta dispersion ES, stratefy treatment groups}
+```{r beta dispersion ES stratefy treatment groups}
 head(beta_es)
 beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"], "_cecal")
 beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
 write.csv(beta_es, "./results/SRS_data/beta_es.csv")
 
+beta_es$group_general[beta_es$group_general == "drug treatment "] <- "drug treatment"
+beta_es$genotype_intervention <- ifelse(grepl("genotype", beta_es$group_general), "yes", "no")
+beta_es$hormonal_intervention <- ifelse(grepl("hormonal", beta_es$group_general), "yes", "no")
+beta_es$colitis_intervention <- ifelse(grepl("colitis", beta_es$group_general), "yes", "no")
+beta_es$dietary_intervention <- ifelse(grepl("dietary", beta_es$group_general), "yes", "no")
+beta_es$control <- ifelse(grepl("control", beta_es$group_general), "control", "treatment")
+
+mod_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~dietary_intervention -1,data = beta_es[beta_es$metric == "Jaccard",], method = "REML")
+orchaRd::mod_results(mod_ho, mod="1", group = "Authors")
+orchaRd::mod_results(mod_ho, mod="dietary_intervention", group = "Authors")
+p1 <- orchaRd::orchard_plot(mod_ho, mod = "dietary_intervention", group = "Authors")
+
 ```
+
 
