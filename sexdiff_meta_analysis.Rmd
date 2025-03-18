@@ -318,42 +318,42 @@ for (subgroup in unique(sample_data_df[[group]])) {
 #  }
   
 
-  # if(nsamples(sub_sub) < 2) {
-  #   cat(subgroup, " has fewer than 2 samples, skipping beta dispersion calculation \n")
-  #   next
-  # }
-  # 
-  # cat(subgroup, " starting calculating beta dispersion\n")
-  #     unifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=FALSE)
-  #     wunifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=T)
-  #     bray_dist = phyloseq::distance(sub_sub, method="bray")
-  #     jac_dist = phyloseq::distance(sub_sub, method="jaccard")
-  #     sample_data_df_sub <- data.frame(sample_data(sub_sub))
-  #     for (dist_name in c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
-  #       dist <- get(dist_name)
-  #       cat("Calculating ", dist_name, "\n")
-  #       beta_disp <- betadisper(dist, sample_data_df_sub$host_sex)
-  #       ###sample size of each sex
-  #       n_male <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "male",])
-  #       n_female <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "female",])
-  #       ###calculate the standard deviation
-  #       distance <- beta_disp$distances
-  #       sd_dispersion <- tapply(distance, sample_data_df_sub$host_sex, sd)
-  #       ###create a table with the distances and sd
-  #       tb <- tibble(
-  #         Sex = row.names(beta_disp$group.distances),
-  #         distance = as.numeric(beta_disp$group.distances),
-  #         sd = as.numeric(sd_dispersion),
-  #         metric = dist_name,
-  #         Authors = study,
-  #         subgroup = subgroup,
-  #         n_male = n_male,
-  #         n_female = n_female
-  #       )
-  #       tb_all <- rbind(tb_all, tb)
-  #       cat(subgroup, " finished calculating beta dispersion\n")
-  # 
-  #     }
+   if(nsamples(sub_sub) < 2) {
+     cat(subgroup, " has fewer than 2 samples, skipping beta dispersion calculation \n")
+     next
+   }
+  
+   cat(subgroup, " starting calculating beta dispersion\n")
+       unifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=FALSE)
+       wunifrac_dist = phyloseq::distance(sub_sub, method="unifrac", weighted=T)
+       bray_dist = phyloseq::distance(sub_sub, method="bray")
+       jac_dist = phyloseq::distance(sub_sub, method="jaccard")
+       sample_data_df_sub <- data.frame(sample_data(sub_sub))
+       for (dist_name in c("unifrac_dist", "wunifrac_dist", "bray_dist", "jac_dist")) {
+         dist <- get(dist_name)
+         cat("Calculating ", dist_name, "\n")
+         beta_disp <- betadisper(dist, sample_data_df_sub$host_sex)
+         ###sample size of each sex
+         n_male <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "male",])
+         n_female <- nrow(sample_data_df_sub[sample_data_df_sub$host_sex == "female",])
+         ###calculate the standard deviation
+         distance <- beta_disp$distances
+         sd_dispersion <- tapply(distance, sample_data_df_sub$host_sex, sd)
+         ###create a table with the distances and sd
+         tb <- tibble(
+           Sex = row.names(beta_disp$group.distances),
+           distance = as.numeric(beta_disp$group.distances),
+           sd = as.numeric(sd_dispersion),
+           metric = dist_name,
+           Authors = study,
+           subgroup = subgroup,
+           n_male = n_male,
+           n_female = n_female
+         )
+         tb_all <- rbind(tb_all, tb)
+         cat(subgroup, " finished calculating beta dispersion\n")
+  
+       }
 }
 
 sub_alpha
@@ -616,6 +616,13 @@ class(beta_es)
 beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
 write.csv(beta_es, "./results/SRS_data/beta_es.csv")
 
+
+#calculate lnRR for beta-dispersion
+tb_all_long_fil <- tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ]
+beta_es <- lnRR2(tb_all_long_fil[mod], tb_all_long_fil$mean_male, tb_all_long_fil$sd_male, tb_all_long_fil$n_male, tb_all_long_fil$mean_female, tb_all_long_fil$sd_female, tb_all_long_fil$n_female)
+beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+write.csv(beta_es, "./results/SRS_data/beta_es_lnRR.csv")
+
 ```
 
 
@@ -627,14 +634,14 @@ beta_es <- data.frame(beta_es) %>%
   mutate(metric = str_replace(metric, "jac_dist", "Jaccard"))
 beta_es$metric <- factor(beta_es$metric, levels=c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
 
-beta_es <- read.csv("./results/SRS_data/beta_es.csv", header=1)
+beta_es <- beta_es %>% filter(!tissue %in% c("skin", "ear", "nose"))
 
 betaCombined <- tibble(Authors=character(0),metric=character(0),ES=numeric(0),Variance=numeric(0), pval=numeric(0))
 
 for (i in unique(beta_es$metric)) {
     subset_data <- beta_es[beta_es$metric == i,]
     fit <- tryCatch({
-      rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), data = subset_data, method = "REML")
+      rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), data = subset_data, method = "REML")
         }, error = function(e) {
         message("Error with ", i, ", ", j)
           return(NULL)
@@ -656,7 +663,7 @@ betaCombined
 
 betaCombined %>% 
   filter(pval < 0.05) 
-write.csv(betaCombined, "./results/SRS_data/betaCombined.csv")
+write.csv(betaCombined, "./results/SRS_data/betaCombined_lnRR.csv")
 
 
 ```
@@ -780,6 +787,8 @@ beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgrou
 beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
 write.csv(beta_es, "./results/SRS_data/beta_es.csv")
 
+beta_es <- read.csv("./results/SRS_data/beta_es_lnRR.csv", header=1)
+
 beta_es$group_general[beta_es$group_general == "drug treatment "] <- "drug treatment"
 beta_es$genotype_intervention <- ifelse(grepl("genotype", beta_es$group_general), "yes", "no")
 beta_es$hormonal_intervention <- ifelse(grepl("hormonal", beta_es$group_general), "yes", "no")
@@ -787,10 +796,10 @@ beta_es$colitis_intervention <- ifelse(grepl("colitis", beta_es$group_general), 
 beta_es$dietary_intervention <- ifelse(grepl("dietary", beta_es$group_general), "yes", "no")
 beta_es$control <- ifelse(grepl("control", beta_es$group_general), "control", "treatment")
 
-mod_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~dietary_intervention -1,data = beta_es[beta_es$metric == "Jaccard",], method = "REML")
+mod_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors), mod = ~control -1,data = beta_es[beta_es$metric == "Jaccard",], method = "REML")
 orchaRd::mod_results(mod_ho, mod="1", group = "Authors")
-orchaRd::mod_results(mod_ho, mod="dietary_intervention", group = "Authors")
-p1 <- orchaRd::orchard_plot(mod_ho, mod = "dietary_intervention", group = "Authors")
+orchaRd::mod_results(mod_ho, mod="control", group = "Authors")
+p1 <- orchaRd::orchard_plot(mod_ho, mod = "control", group = "Authors")
 
 ```
 
