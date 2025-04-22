@@ -2,7 +2,7 @@
 title: "microbiome meta-analysis to investigate sex difference in mice, 
 used SRS to normalize data, which used a deterministic process to sub-sample rather than randomly, better preserve the structure of microbiota profile"
 author: Judy (Jingdi) Li
-date: 2025/2
+date: 2025/4
 output: html_notebook
 ---
 
@@ -10,55 +10,62 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
 
-```{r}
+```{r load packages, cache=FALSE}
+devtools::install_github("daniel1noble/orchaRd", ref = "main", force = TRUE)
+pacman::p_load(phyloseq,
+               tidyr,
+               qiime2R,
+               vegan,
+               ggplot2,
+               picante,
+               dplyr,
+               tibble,
+               tidyverse,
+               ggpubr,
+               rstatix,
+               esc,
+               effectsize,
+               SRS,
+               reshape2,
+               here,
+               metaAidR,
+               devtools, 
+               metafor, 
+               patchwork, 
+               R.rsp, 
+               orchaRd, 
+               emmeans,
+               ape, 
+               phytools, 
+               flextable
+)
+```
 
-if (!require("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
 
-BiocManager::install("phyloseq")
+```{r custom functions}
+source(here("custom_func", "toolbox.R"))
+```
 
-install.packages("remotes")
-remotes::install_github("jbisanz/qiime2R")
-####load library####
-library(phyloseq)
-library(ape)
-library(tidyr)
-library(qiime2R)
-library(vegan)
-library(ggplot2)
-library(picante)
-library(dplyr)
-library(tibble)
-library(tidyverse)
-library(ggpubr)
-library(rstatix)
-library(esc)
-library(effectsize)
-library(SRS)
-library(reshape2)
 
+```{r load files in object, this object contains all the required files, alternatively can load individual files below}
 ######load the object#####
-load("./newest_SRS.RData")
+load(here("data", "newest_SRS.RData"))
 
 ######save the object######
-save.image("./newest_SRS.RData") 
+#save.image(here("data", "newest_SRS.RData")) 
 
 ```
 
 
 ```{r}
-####load data
-assign("dat33", qza_to_phyloseq(features = "./table_filt_decomtam33_V4.qza", 
-                                tree = "./asvs-tree_V4.qza", 
-                                taxonomy = "./classification.qza", 
-                                metadata = "./metadata_33.txt"))
+####load data, skip if already load the above object
+assign("dat33", qza_to_phyloseq(features = here("data","table_filt_decomtam33_V4.qza"), 
+                                tree = here("data","asvs-tree_V4.qza"), 
+                                taxonomy = here("data","classification.qza"), 
+                                metadata = here("data","metadata_dat33.txt")))
 dat33 #3140 samples: 2887 samples+12+241
 #save(dat33, file = "./dataset_phyloseq.RData")
-dat <- data.frame(sample_data(dat33))
-write.csv(dat, "./metadata_dat33.csv")
 
-dat_new <- read.csv("./metadata_33.csv") ##after revising 
-sample_data(dat33) <- sample_data(dat_new)
 ####number of samples not match as the metadata table,check
 # table <- read_qza("/Users/lijingdi/Downloads/Jan_project/final_33/table_filt_decomtam33_V4.qza") #4047 samples
 # metadat <- read.csv("/Users/lijingdi/Downloads/Jan_project/final_33/metadata_33.txt", sep = "\t", header = 1)
@@ -259,12 +266,7 @@ sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(
 ```
 
 
-```{r update metadata}
-###if need revising metadata and decide on subgroups
-dat_new <- read.csv("./metadata_dat33.csv", header = 1, row.names = 1) ##after revising 
-sample_data(dat33) <- sample_data(dat_new)
-dat33
-```
+
 
 ```{r calculate alpha diversity and beta dispersion}
 #dat_alpha <- data.frame()
@@ -385,7 +387,9 @@ alpha_es <- dat_alpha_group %>% calculate_ES(mod)
 alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
 head(alpha_es) #158 ES per metric per stats
 alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
-write.csv(alpha_es, "./results/SRS_data/alpha_es_new.csv")
+alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
+alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(alpha_es, here("results","alpha_es.csv"))
 
 ```
 
@@ -434,17 +438,10 @@ AlphaCombined
 AlphaCombined_sig <- 
 AlphaCombined %>% 
   filter(pval < 0.05) 
-write.csv(AlphaCombined, "./results/SRS_data/AlphaCombined.csv")
-write.csv(AlphaCombined_sig, "./results/SRS_data/AlphaCombined_sig.csv")
+write.csv(AlphaCombined, here("results","AlphaCombined.csv"))
+write.csv(AlphaCombined_sig, here("results","AlphaCombined_sig.csv"))
 ```
 
-
-```{r load orchaRd 2.0 package}
-devtools::install_github("daniel1noble/orchaRd", ref = "main", force = TRUE)
-pacman::p_load(devtools, tidyverse, metafor, patchwork, R.rsp, orchaRd, emmeans,
-    ape, phytools, flextable)
-
-```
 
 
 ```{r meta-meta model lnCVR Alpha-div ES visualized using orchaRd}
@@ -609,19 +606,21 @@ tb_all_long %>%
   
 
 #calculate hedge's g using escalc
-beta_es <- escalc(measure = "SMD", m1i=mean_male, m2i=mean_female, sd1i=sd_male, sd2i=sd_female, n1i=n_male, n2i=n_female, 
-       data=tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ], vtype = "UB")
-
-class(beta_es)
-beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
-write.csv(beta_es, "./results/SRS_data/beta_es.csv")
+# beta_es <- escalc(measure = "SMD", m1i=mean_male, m2i=mean_female, sd1i=sd_male, sd2i=sd_female, n1i=n_male, n2i=n_female, 
+#        data=tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ], vtype = "UB")
+# 
+# class(beta_es)
+# beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+# write.csv(beta_es, here("results","beta_es.csv"))
 
 
 #calculate lnRR for beta-dispersion
 tb_all_long_fil <- tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ]
 beta_es <- lnRR2(tb_all_long_fil[mod], tb_all_long_fil$mean_male, tb_all_long_fil$sd_male, tb_all_long_fil$n_male, tb_all_long_fil$mean_female, tb_all_long_fil$sd_female, tb_all_long_fil$n_female)
 beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
-write.csv(beta_es, "./results/SRS_data/beta_es_lnRR.csv")
+beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"], "_cecal")
+beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(beta_es, here("results", "beta_es_lnRR.csv"))
 
 ```
 
@@ -663,20 +662,20 @@ betaCombined
 
 betaCombined %>% 
   filter(pval < 0.05) 
-write.csv(betaCombined, "./results/SRS_data/betaCombined_lnRR.csv")
+write.csv(betaCombined, here("results", "betaCombined_lnRR.csv"))
 
 
 ```
 
 ```{r Beta dispersion meta-meta model and ES visualized using orchaRd}
 ###heteroscedastic model
-fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors), mod = ~metric -1,
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
               data = beta_es, method = "REML")
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "SMD")
-orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "SMD")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "1", group = "Authors", xlab = "lnRR")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
 
 ###homoscedastic model
 fit_ho <- rma.mv(yi, vi, slab = Authors,random = list(~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
@@ -687,8 +686,8 @@ anova(fit_ho, fit_he)
 orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
 orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
 
-p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "SMD")
-orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "SMD")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
 
 
 ###adding the VCV matrix
@@ -701,7 +700,7 @@ beta_ho_vcv <- rma.mv(yi, V_beta_es, slab = Authors,random = list(~ 1 | Protocol
               data = beta_es, method = "REML")
 orchaRd::mod_results(beta_ho_vcv, mod="1", group = "Authors")
 orchaRd::mod_results(beta_ho_vcv, mod="metric", group = "Authors")
-orchaRd::orchard_plot(beta_ho_vcv, mod = "metric", group = "Authors", xlab = "SMD")
+orchaRd::orchard_plot(beta_ho_vcv, mod = "metric", group = "Authors", xlab = "lnRR")
 
 ```
 
@@ -750,14 +749,8 @@ p2 <- betaCombined %>%
 
 
 ```{r Alpha-div ES stratefy treatment groups}
-head(alpha_es)
-alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
-alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
-write.csv(alpha_es, "./results/SRS_data/alpha_es_new.csv")
-unique(alpha_es$subgroup)
-
-###after manually decide and add subgroups
-alpha_es <- read.csv("./results/SRS_data/alpha_es_new.csv", header = 1) ###now alpha_es has wider categories of groups
+###read revised alpha_es table after manually decide and add subgroups
+alpha_es <- read.csv(here("data", "alpha_es_new.csv"), header = 1) ###now alpha_es has wider categories of groups
 alpha_es$group_general[alpha_es$group_general == "drug treatment "] <- "drug treatment"
 alpha_es$genotype_intervention <- ifelse(grepl("genotype", alpha_es$group_general), "yes", "no")
 alpha_es$hormonal_intervention <- ifelse(grepl("hormonal", alpha_es$group_general), "yes", "no")
@@ -766,8 +759,6 @@ alpha_es$dietary_intervention <- ifelse(grepl("dietary", alpha_es$group_general)
 alpha_es$control <- ifelse(grepl("control", alpha_es$group_general), "control", "treatment")
 
 ###consider adding a VCV matrix to account for the dependence of variation based on subgroups
-#install_github("daniel1noble/metaAidR")
-library(metaAidR)
 # V_alpha_es_lncvr <- make_VCV_matrix(data = alpha_es[alpha_es$stats == "lnCVR",],
 # V = "vi", obs = "X", cluster = "subgroup",
 # type = "vcv", rho = 0.5)
@@ -782,12 +773,8 @@ p1 <- orchaRd::orchard_plot(mod_ho, mod = "tissue", group = "Authors", xlab = "l
 ```
 
 ```{r beta dispersion ES stratefy treatment groups}
-head(beta_es)
-beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"], "_cecal")
-beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
-write.csv(beta_es, "./results/SRS_data/beta_es.csv")
-
-beta_es <- read.csv("./results/SRS_data/beta_es_lnRR.csv", header=1)
+##read revised beta_es table -- mannualy revised to add subgroups
+beta_es <- read.csv(here("data", "beta_es_lnRR_new.csv"), header=1)
 
 beta_es$group_general[beta_es$group_general == "drug treatment "] <- "drug treatment"
 beta_es$genotype_intervention <- ifelse(grepl("genotype", beta_es$group_general), "yes", "no")
