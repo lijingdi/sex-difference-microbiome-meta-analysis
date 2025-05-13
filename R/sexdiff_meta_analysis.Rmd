@@ -37,7 +37,8 @@ pacman::p_load(phyloseq,
                emmeans,
                ape, 
                phytools, 
-               flextable
+               flextable,
+               cli
 )
 ```
 
@@ -373,6 +374,7 @@ tb_all_1 %>% group_by(subgroup, Sex) %>% summarise(n = n(), )
 ```{r Alpha-div ES calculation}
 dat_alpha$PD[dat_alpha$PD == "none"] <- NA
 dat_alpha$PD <- as.numeric(dat_alpha$PD)
+dat_alpha <- dat_alpha %>% filter(!tissue %in% c("skin", "nose", "ear"))
 
 dat_alpha_long <- pivot_longer(dat_alpha, cols = c(Observed, Chao1.Chao1, Shannon, Simpson, PD, Evenness), names_to = "metric",
                values_to = "value")
@@ -385,7 +387,7 @@ head(dat_alpha_group)
 mod <- c("Authors", "metric", "subgroup")
 alpha_es <- dat_alpha_group %>% calculate_ES(mod) 
 alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
-head(alpha_es) #158 ES per metric per stats
+head(alpha_es) #134 ES per metric per stats
 alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
 alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
 alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
@@ -446,7 +448,7 @@ write.csv(AlphaCombined_sig, here("results","AlphaCombined_sig.csv"))
 
 ```{r meta-meta model lnCVR Alpha-div ES visualized using orchaRd}
 ###heteroscedastic model
-fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Protocol/Authors/subgroup), mod = ~metric -1,
+fit_he <- rma.mv(yi, vi, slab = Authors,random = list(~1|metric, ~ 1 | Authors/subgroup), mod = ~metric -1,
               data = alpha_es[alpha_es$stats == "lnCVR",], method = "REML")
 plot(fitted(fit_he), residuals(fit_he))
 orchaRd::mod_results(fit_he, mod="1", group = "Authors")
@@ -791,3 +793,63 @@ p1 <- orchaRd::orchard_plot(mod_ho, mod = "control", group = "Authors")
 ```
 
 
+
+```{r alpha-div treatment vs. control for different sex}
+head(dat_alpha)
+
+dat_alpha_long <- pivot_longer(dat_alpha, cols = c(Observed, Chao1.Chao1, Shannon, Simpson, PD, Evenness), names_to = "metric",
+               values_to = "value")
+dat_alpha_group <- dat_alpha_long %>%
+      mutate(group_general = case_when(
+    grepl("control", subgroup, ignore.case = TRUE) ~ "control",
+    subgroup == "Water-T0" ~ "control",
+    Authors == "Velasco et al. 2021" & subgroup == "C57BL/6J" ~ "control",
+    TRUE ~ "treatment"
+  )) %>% ###group subgroups by control vs. treatment
+      group_by(across(all_of(c("Authors", "group_general", "subgroup", "Sex", "metric")))) %>%
+      summarise(mean = mean(value), sd = sd(value), n = n()) %>%
+      pivot_wider(., names_from = c(group_general), values_from = c(mean, sd, n))
+
+###cp mean_control and sd_control to each subgroup rows
+dat_alpha_group %>% 
+  
+
+####calculate ES for alpha-div
+head(dat_alpha_group)
+mod <- c("Authors", "metric", "subgroup")
+alpha_es <- dat_alpha_group %>% calculate_ES(mod) 
+alpha_es <- alpha_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+head(alpha_es) #134 ES per metric per stats
+alpha_es[sapply(alpha_es, is.numeric)] <- lapply(alpha_es[sapply(alpha_es, is.numeric)], function(x) replace(x, is.infinite(x), NA)) ##replace all infinite values to NA, otherwise lnf messed up with summary ES calculation
+alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Tam et al. 2020"], "_cecal")
+alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"] <- paste0(alpha_es$subgroup[alpha_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(alpha_es, here("results","alpha_es_treatment_control.csv"))
+
+```
+
+```{r beta dispersion ES calculation for treatment vs. control within sex}
+###beta-dispersion
+head(tb_all)
+mod <- c("Authors", "metric", "subgroup")
+tb_all_long <- tb_all %>%
+  pivot_wider(., names_from = Sex, values_from = c(distance, sd)) %>%
+  rename(mean_male = distance_male,
+         mean_female = distance_female,
+         sd_male = sd_male,
+         sd_female = sd_female)
+
+tb_all_long %>%
+  filter(n_male == 0 | n_female == 0) ##some subgroups have n_male or n_female equals to 0
+
+
+
+
+#calculate lnRR for beta-dispersion
+tb_all_long_fil <- tb_all_long[tb_all_long$n_male!=0 & tb_all_long$n_female!=0, ]
+beta_es <- lnRR2(tb_all_long_fil[mod], tb_all_long_fil$mean_male, tb_all_long_fil$sd_male, tb_all_long_fil$n_male, tb_all_long_fil$mean_female, tb_all_long_fil$sd_female, tb_all_long_fil$n_female)
+beta_es <- beta_es %>% mutate(Protocol = str_extract(Authors, "^[^ ]+"))
+beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"] <- paste0(beta_es$subgroup[beta_es$Authors == "Tam et al. 2020"], "_cecal")
+beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"] <- paste0(beta_es$subgroup[beta_es$Authors == "Ellis et al. 2021"], "_cecal")
+write.csv(beta_es, here("results", "beta_es_lnRR_treatment.csv"))
+
+```
