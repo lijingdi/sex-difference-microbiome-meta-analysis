@@ -39,7 +39,6 @@ lnRR2 <- function(mod.list, CMean, CSD, CN, EMean, ESD, EN){
 }
 
 # this function computes corrected lnCVR, lnVR and lnRR to generate effect size for alpha-diversity
-# lnRR2 (better estimator)
 calculate_ES <- function(dat, mod, metric=c("Chao1.Chao1", "Evenness", "Observed", "PD",
                                                                      "Shannon", "Simpson")) {
   mydata_CVR <- data.frame(CN=numeric(0), EN=numeric(0),
@@ -56,6 +55,31 @@ calculate_ES <- function(dat, mod, metric=c("Chao1.Chao1", "Evenness", "Observed
       mydata_CVR <- rbind(mydata_CVR, add_CVR)
       mydata_VR <- rbind(mydata_VR, add_VR)
       mydata_RR <- rbind(mydata_RR, add_RR)
+  }
+  mydata_CVR <- mydata_CVR %>% mutate(stats = "lnCVR")
+  mydata_VR <- mydata_VR %>% mutate(stats = "lnVR")
+  mydata_RR <- mydata_RR %>% mutate(stats = "lnRR")
+  mydata_all <- do.call("bind_rows", list(mydata_CVR, mydata_VR, mydata_RR))
+  return(mydata_all)
+}
+
+
+calculate_ES_treatment <- function(dat, mod, metric=c("Chao1.Chao1", "Evenness", "Observed", "PD",
+                                            "Shannon", "Simpson")) {
+  mydata_CVR <- data.frame(CN=numeric(0), EN=numeric(0),
+                           yi=numeric(0), vi=numeric(0), Authors=character(0), metric=character(0))
+  mydata_VR <- data.frame(CN=numeric(0), EN=numeric(0),
+                          yi=numeric(0), vi=numeric(0), Authors=character(0), metric=character(0))
+  mydata_RR <- data.frame(CN=numeric(0), EN=numeric(0),
+                          yi=numeric(0), vi=numeric(0), Authors=character(0), metric=character(0))
+  for (i in unique(dat$metric)) {
+    dat_sub <- dat[dat$metric == i,]
+    add_CVR <- lnCVR2(dat_sub[mod], dat_sub$mean_control, dat_sub$sd_control, dat_sub$n_control, dat_sub$mean_treatment, dat_sub$sd_treatment, dat_sub$n_treatment)
+    add_VR <- lnVR2(dat_sub[mod], dat_sub$mean_control, dat_sub$sd_control, dat_sub$n_control, dat_sub$mean_treatnent, dat_sub$sd_treatment, dat_sub$n_treatment)
+    add_RR <- lnRR2(dat_sub[mod], dat_sub$mean_control, dat_sub$sd_control, dat_sub$n_control, dat_sub$mean_treatment, dat_sub$sd_treatment, dat_sub$n_treatment)
+    mydata_CVR <- rbind(mydata_CVR, add_CVR)
+    mydata_VR <- rbind(mydata_VR, add_VR)
+    mydata_RR <- rbind(mydata_RR, add_RR)
   }
   mydata_CVR <- mydata_CVR %>% mutate(stats = "lnCVR")
   mydata_VR <- mydata_VR %>% mutate(stats = "lnVR")

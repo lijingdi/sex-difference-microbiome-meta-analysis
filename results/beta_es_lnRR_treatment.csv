@@ -1,0 +1,893 @@
+"","Authors","metric","subgroup","Sex","CN","EN","yi","vi"
+"1","Lyte et al. 2022","Unweighted Unifrac","beef-chow-stress","female",19,20,0.000442255098036471,0.000804802025783856
+"2","Lyte et al. 2022","Unweighted Unifrac","beef-chow-stress","male",20,18,-0.0494911866283364,0.000580560843254118
+"3","Lyte et al. 2022","Weighted Unifrac","beef-chow-stress","female",19,20,0.377363256493272,0.0139258639516342
+"4","Lyte et al. 2022","Weighted Unifrac","beef-chow-stress","male",20,18,0.312362637535583,0.0607762176477446
+"5","Lyte et al. 2022","Bray-Curtis","beef-chow-stress","female",19,20,-0.023765795851722,0.00165522545233414
+"6","Lyte et al. 2022","Bray-Curtis","beef-chow-stress","male",20,18,-0.075695359195621,0.00198447239492741
+"7","Lyte et al. 2022","Jaccard","beef-chow-stress","female",19,20,-0.013433709079182,0.000653747480018098
+"8","Lyte et al. 2022","Jaccard","beef-chow-stress","male",20,18,-0.0447076029332869,0.00076901803609759
+"9","Lyte et al. 2022","Unweighted Unifrac","chow-stress","female",19,20,0.0183296903052008,0.000673653691890123
+"10","Lyte et al. 2022","Unweighted Unifrac","chow-stress","male",20,20,-0.0136007591788841,0.00059378092668475
+"11","Lyte et al. 2022","Weighted Unifrac","chow-stress","female",19,20,0.264477061040241,0.0271451419341864
+"12","Lyte et al. 2022","Weighted Unifrac","chow-stress","male",20,20,0.324166659821383,0.073749150199334
+"13","Lyte et al. 2022","Bray-Curtis","chow-stress","female",19,20,-0.00660152473933558,0.00135566671624814
+"14","Lyte et al. 2022","Bray-Curtis","chow-stress","male",20,20,-0.0471820202893303,0.00235939175556026
+"15","Lyte et al. 2022","Jaccard","chow-stress","female",19,20,-0.00208694869879189,0.000519722180070039
+"16","Lyte et al. 2022","Jaccard","chow-stress","male",20,20,-0.0259295325658583,0.000917064826580793
+"17","Lyte et al. 2022","Unweighted Unifrac","beef-chow","female",19,19,-0.02456604192157,0.000655530897451522
+"18","Lyte et al. 2022","Unweighted Unifrac","beef-chow","male",20,18,0.0738950987167336,0.00120982013317831
+"19","Lyte et al. 2022","Weighted Unifrac","beef-chow","female",19,19,0.361663451042589,0.0340017570343604
+"20","Lyte et al. 2022","Weighted Unifrac","beef-chow","male",20,18,0.435307737928179,0.0415462311921162
+"21","Lyte et al. 2022","Bray-Curtis","beef-chow","female",19,19,-0.0145223750139661,0.00227598517082028
+"22","Lyte et al. 2022","Bray-Curtis","beef-chow","male",20,18,0.103059823335535,0.0030335880425716
+"23","Lyte et al. 2022","Jaccard","beef-chow","female",19,19,-0.0116005383769191,0.000896927274570708
+"24","Lyte et al. 2022","Jaccard","beef-chow","male",20,18,0.0622302208564704,0.00103932549814663
+"25","Ellis et al. 2021","Unweighted Unifrac","2H7MK9","female",7,7,0.00708688499750721,0.00187926419569257
+"26","Ellis et al. 2021","Unweighted Unifrac","2H7MK9","male",7,7,-0.0706023594974807,0.0159084095368047
+"27","Ellis et al. 2021","Weighted Unifrac","2H7MK9","female",7,7,-0.124275614386482,0.0677513548140221
+"28","Ellis et al. 2021","Weighted Unifrac","2H7MK9","male",7,7,-0.16850296844806,0.0181770203010183
+"29","Ellis et al. 2021","Bray-Curtis","2H7MK9","female",7,7,-0.0248972047749255,0.00413899341965899
+"30","Ellis et al. 2021","Bray-Curtis","2H7MK9","male",7,7,-0.0164412899516254,0.0139177566172884
+"31","Ellis et al. 2021","Jaccard","2H7MK9","female",7,7,-0.0196232375476536,0.00189167239521983
+"32","Ellis et al. 2021","Jaccard","2H7MK9","male",7,7,-0.00606486618943184,0.00564794474108392
+"33","Ellis et al. 2021","Unweighted Unifrac","13C11MK4","female",7,7,-0.119906427442265,0.00325421219895743
+"34","Ellis et al. 2021","Unweighted Unifrac","13C11MK4","male",7,7,-0.0250812951657195,0.0159655546946376
+"35","Ellis et al. 2021","Weighted Unifrac","13C11MK4","female",7,7,-0.0657568644505948,0.105417710152099
+"36","Ellis et al. 2021","Weighted Unifrac","13C11MK4","male",7,7,-0.023004360051517,0.0128248881306729
+"37","Ellis et al. 2021","Bray-Curtis","13C11MK4","female",7,7,-0.0775037904042355,0.00308796832793302
+"38","Ellis et al. 2021","Bray-Curtis","13C11MK4","male",7,7,0.0108519799354024,0.0138864688880718
+"39","Ellis et al. 2021","Jaccard","13C11MK4","female",7,7,-0.0533515857489688,0.00140347592728462
+"40","Ellis et al. 2021","Jaccard","13C11MK4","male",7,7,0.0123763314591493,0.00562131937006864
+"41","Ellis et al. 2021","Unweighted Unifrac","2H7PK","female",7,7,-0.0599820687138924,0.00349073557106487
+"42","Ellis et al. 2021","Unweighted Unifrac","2H7PK","male",7,7,-0.0757219496716888,0.0164960286978034
+"43","Ellis et al. 2021","Weighted Unifrac","2H7PK","female",7,7,-0.221612445640579,0.0770804360424558
+"44","Ellis et al. 2021","Weighted Unifrac","2H7PK","male",7,7,-0.252119905875394,0.0280772289984903
+"45","Ellis et al. 2021","Bray-Curtis","2H7PK","female",7,7,0.010047879219979,0.00195768514867056
+"46","Ellis et al. 2021","Bray-Curtis","2H7PK","male",7,7,-0.0695182177602793,0.0170655388295138
+"47","Ellis et al. 2021","Jaccard","2H7PK","female",7,7,0.00611300146605182,0.00085836105198759
+"48","Ellis et al. 2021","Jaccard","2H7PK","male",7,7,-0.0420390742797004,0.00722903046010863
+"49","Ellis et al. 2021","Unweighted Unifrac","2H7MK7","female",7,7,-0.0127355674833735,0.0025484056016655
+"50","Ellis et al. 2021","Unweighted Unifrac","2H7MK7","male",7,7,-0.0461268715742214,0.0165623019887198
+"51","Ellis et al. 2021","Weighted Unifrac","2H7MK7","female",7,7,0.06504108207271,0.0626953469455601
+"52","Ellis et al. 2021","Weighted Unifrac","2H7MK7","male",7,7,-0.0769606477572949,0.0183630220382444
+"53","Ellis et al. 2021","Bray-Curtis","2H7MK7","female",7,7,-0.00535632244280871,0.0019059898949127
+"54","Ellis et al. 2021","Bray-Curtis","2H7MK7","male",7,7,-0.0797032570562105,0.0181205408341421
+"55","Ellis et al. 2021","Jaccard","2H7MK7","female",7,7,-0.00437049194201242,0.00085025877922396
+"56","Ellis et al. 2021","Jaccard","2H7MK7","male",7,7,-0.047057509991627,0.0073975794280107
+"57","Ellis et al. 2021","Unweighted Unifrac","MK4","female",7,10,0.0530938448584756,0.00319262682125501
+"58","Ellis et al. 2021","Unweighted Unifrac","MK4","male",7,10,-0.181821071388704,0.0168047024833627
+"59","Ellis et al. 2021","Weighted Unifrac","MK4","female",7,10,-0.215419917029478,0.0712639797255694
+"60","Ellis et al. 2021","Weighted Unifrac","MK4","male",7,10,0.891791184203801,0.0841840814472991
+"61","Ellis et al. 2021","Bray-Curtis","MK4","female",7,10,0.25895071577564,0.00406539997351596
+"62","Ellis et al. 2021","Bray-Curtis","MK4","male",7,10,-0.0151902120282158,0.0131498288190238
+"63","Ellis et al. 2021","Jaccard","MK4","female",7,10,0.165668482328735,0.00143534137090381
+"64","Ellis et al. 2021","Jaccard","MK4","male",7,10,0.00329761236151812,0.00530124771123288
+"65","Ellis et al. 2021","Unweighted Unifrac","PK","female",7,9,0.0704520680727416,0.00193557092065655
+"66","Ellis et al. 2021","Unweighted Unifrac","PK","male",7,10,-0.100679970090013,0.0239901917756352
+"67","Ellis et al. 2021","Weighted Unifrac","PK","female",7,9,-0.373332540445981,0.0823412936088258
+"68","Ellis et al. 2021","Weighted Unifrac","PK","male",7,10,1.32442084593501,0.154733902901206
+"69","Ellis et al. 2021","Bray-Curtis","PK","female",7,9,0.137514003856009,0.0076065468395394
+"70","Ellis et al. 2021","Bray-Curtis","PK","male",7,10,0.0619641865186166,0.0166223598272583
+"71","Ellis et al. 2021","Jaccard","PK","female",7,9,0.0911623566237307,0.0029920189330429
+"72","Ellis et al. 2021","Jaccard","PK","male",7,10,0.0456548690463778,0.00662698691471643
+"73","Ellis et al. 2021","Unweighted Unifrac","VKdef","female",7,9,0.00810395167897622,0.00180487635962419
+"74","Ellis et al. 2021","Unweighted Unifrac","VKdef","male",7,8,-0.229189014979705,0.0172906310445874
+"75","Ellis et al. 2021","Weighted Unifrac","VKdef","female",7,9,-0.407350658104522,0.0717092119962699
+"76","Ellis et al. 2021","Weighted Unifrac","VKdef","male",7,8,0.174513702963383,0.0235572871460349
+"77","Ellis et al. 2021","Bray-Curtis","VKdef","female",7,9,0.15539606012181,0.00877851736184965
+"78","Ellis et al. 2021","Bray-Curtis","VKdef","male",7,8,0.0151581375260738,0.0125862106923121
+"79","Ellis et al. 2021","Jaccard","VKdef","female",7,9,0.0982041392767294,0.0033412129181586
+"80","Ellis et al. 2021","Jaccard","VKdef","male",7,8,0.00988563115487822,0.00507601027673915
+"81","Ellis et al. 2021","Unweighted Unifrac","Combo","female",7,9,0.0786428797055398,0.00255358356646337
+"82","Ellis et al. 2021","Unweighted Unifrac","Combo","male",7,10,-0.214222911603421,0.0170249297257893
+"83","Ellis et al. 2021","Weighted Unifrac","Combo","female",7,9,-0.166062754956842,0.0624879781945872
+"84","Ellis et al. 2021","Weighted Unifrac","Combo","male",7,10,0.89470899264751,0.0175136741325755
+"85","Ellis et al. 2021","Bray-Curtis","Combo","female",7,9,0.0901569913343353,0.00422878583401821
+"86","Ellis et al. 2021","Bray-Curtis","Combo","male",7,10,0.0250694512429955,0.0146676218001366
+"87","Ellis et al. 2021","Jaccard","Combo","female",7,9,0.0635396950471951,0.00176787641706171
+"88","Ellis et al. 2021","Jaccard","Combo","male",7,10,0.0262436022369333,0.00578732878663223
+"89","Ellis et al. 2021","Unweighted Unifrac","MK9","female",7,9,0.0778085447789418,0.00159731157141649
+"90","Ellis et al. 2021","Unweighted Unifrac","MK9","male",7,9,-0.163598065974794,0.0171773818946167
+"91","Ellis et al. 2021","Weighted Unifrac","MK9","female",7,9,-0.00469437331278474,0.0796162083228724
+"92","Ellis et al. 2021","Weighted Unifrac","MK9","male",7,9,0.785186520902497,0.0250296474690602
+"93","Ellis et al. 2021","Bray-Curtis","MK9","female",7,9,0.184411193352047,0.0029309699280183
+"94","Ellis et al. 2021","Bray-Curtis","MK9","male",7,9,0.0595814988281054,0.0145640313675087
+"95","Ellis et al. 2021","Jaccard","MK9","female",7,9,0.122669003396511,0.00115759680375639
+"96","Ellis et al. 2021","Jaccard","MK9","male",7,9,0.0468235995177307,0.00576216229843653
+"97",NA,NA,NA,NA,NA,NA,NA,NA
+"98",NA,NA,NA,NA,NA,NA,NA,NA
+"99",NA,NA,NA,NA,NA,NA,NA,NA
+"100",NA,NA,NA,NA,NA,NA,NA,NA
+"101",NA,NA,NA,NA,NA,NA,NA,NA
+"102",NA,NA,NA,NA,NA,NA,NA,NA
+"103",NA,NA,NA,NA,NA,NA,NA,NA
+"104",NA,NA,NA,NA,NA,NA,NA,NA
+"105",NA,NA,NA,NA,NA,NA,NA,NA
+"106",NA,NA,NA,NA,NA,NA,NA,NA
+"107",NA,NA,NA,NA,NA,NA,NA,NA
+"108",NA,NA,NA,NA,NA,NA,NA,NA
+"109",NA,NA,NA,NA,NA,NA,NA,NA
+"110",NA,NA,NA,NA,NA,NA,NA,NA
+"111",NA,NA,NA,NA,NA,NA,NA,NA
+"112",NA,NA,NA,NA,NA,NA,NA,NA
+"113",NA,NA,NA,NA,NA,NA,NA,NA
+"114",NA,NA,NA,NA,NA,NA,NA,NA
+"115",NA,NA,NA,NA,NA,NA,NA,NA
+"116",NA,NA,NA,NA,NA,NA,NA,NA
+"117",NA,NA,NA,NA,NA,NA,NA,NA
+"118",NA,NA,NA,NA,NA,NA,NA,NA
+"119",NA,NA,NA,NA,NA,NA,NA,NA
+"120",NA,NA,NA,NA,NA,NA,NA,NA
+"121",NA,NA,NA,NA,NA,NA,NA,NA
+"122",NA,NA,NA,NA,NA,NA,NA,NA
+"123",NA,NA,NA,NA,NA,NA,NA,NA
+"124",NA,NA,NA,NA,NA,NA,NA,NA
+"125",NA,NA,NA,NA,NA,NA,NA,NA
+"126",NA,NA,NA,NA,NA,NA,NA,NA
+"127",NA,NA,NA,NA,NA,NA,NA,NA
+"128",NA,NA,NA,NA,NA,NA,NA,NA
+"129",NA,NA,NA,NA,NA,NA,NA,NA
+"130",NA,NA,NA,NA,NA,NA,NA,NA
+"131",NA,NA,NA,NA,NA,NA,NA,NA
+"132",NA,NA,NA,NA,NA,NA,NA,NA
+"133",NA,NA,NA,NA,NA,NA,NA,NA
+"134",NA,NA,NA,NA,NA,NA,NA,NA
+"135",NA,NA,NA,NA,NA,NA,NA,NA
+"136",NA,NA,NA,NA,NA,NA,NA,NA
+"137","Zou et al. 2021","Unweighted Unifrac","High fat chow","female",4,5,0.203773590632046,0.0183182199377249
+"138","Zou et al. 2021","Unweighted Unifrac","High fat chow","male",4,5,-0.32894369402862,0.0298338935359608
+"139","Zou et al. 2021","Weighted Unifrac","High fat chow","female",4,5,0.7559282539955,0.00926895888864324
+"140","Zou et al. 2021","Weighted Unifrac","High fat chow","male",4,5,0.50945732069243,0.100957344397552
+"141","Zou et al. 2021","Bray-Curtis","High fat chow","female",4,5,0.0483487832837392,0.018867789145589
+"142","Zou et al. 2021","Bray-Curtis","High fat chow","male",4,5,0.106554467199069,0.0093529949020808
+"143","Zou et al. 2021","Jaccard","High fat chow","female",4,5,0.0330434414017862,0.00937101694078808
+"144","Zou et al. 2021","Jaccard","High fat chow","male",4,5,0.0846614185263819,0.00389831269783032
+"145","Zou et al. 2021","Unweighted Unifrac","Glrx1 KO + Standard chow","female",4,3,0.126736651204458,0.0142001973771233
+"146","Zou et al. 2021","Unweighted Unifrac","Glrx1 KO + Standard chow","male",4,2,-0.0670747070192485,0.0262091202131177
+"147","Zou et al. 2021","Weighted Unifrac","Glrx1 KO + Standard chow","female",4,3,0.83682969702133,0.273976687062476
+"148","Zou et al. 2021","Weighted Unifrac","Glrx1 KO + Standard chow","male",4,2,0.494697275118351,0.0185854940785046
+"149","Zou et al. 2021","Bray-Curtis","Glrx1 KO + Standard chow","female",4,3,0.188177216830125,0.0607591876051626
+"150","Zou et al. 2021","Bray-Curtis","Glrx1 KO + Standard chow","male",4,2,-0.278252988162835,0.00210663302560168
+"151","Zou et al. 2021","Jaccard","Glrx1 KO + Standard chow","female",4,3,0.0942692967973366,0.0244174735926072
+"152","Zou et al. 2021","Jaccard","Glrx1 KO + Standard chow","male",4,2,-0.244521745474266,0.00099153883572681
+"153","Zou et al. 2021","Unweighted Unifrac","Glrx1 KO + High fat chow","female",4,4,0.0267311235598908,0.0318108601915034
+"154","Zou et al. 2021","Unweighted Unifrac","Glrx1 KO + High fat chow","male",4,4,0.0775983740585757,0.0548315365770198
+"155","Zou et al. 2021","Weighted Unifrac","Glrx1 KO + High fat chow","female",4,4,1.19270613662651,0.184241308680481
+"156","Zou et al. 2021","Weighted Unifrac","Glrx1 KO + High fat chow","male",4,4,0.942689922358959,0.11047563379966
+"157","Zou et al. 2021","Bray-Curtis","Glrx1 KO + High fat chow","female",4,4,0.187339761651734,0.0524142957397366
+"158","Zou et al. 2021","Bray-Curtis","Glrx1 KO + High fat chow","male",4,4,0.24631324833392,0.0986331091506581
+"159","Zou et al. 2021","Jaccard","Glrx1 KO + High fat chow","female",4,4,0.113676787442455,0.0231405680931209
+"160","Zou et al. 2021","Jaccard","Glrx1 KO + High fat chow","male",4,4,0.142146686195082,0.0426608387541028
+"161","Song et al. 2021","Unweighted Unifrac","Nrf2KO","female",8,8,-0.0749745019747178,0.00163349783390999
+"162","Song et al. 2021","Unweighted Unifrac","Nrf2KO","male",8,8,-0.00439730299288856,0.000844124564170031
+"163","Song et al. 2021","Weighted Unifrac","Nrf2KO","female",8,8,0.111826795000912,0.0626516277990574
+"164","Song et al. 2021","Weighted Unifrac","Nrf2KO","male",8,8,-0.208816110830093,0.108544819894091
+"165","Song et al. 2021","Bray-Curtis","Nrf2KO","female",8,8,-0.0254783596192439,0.0611368121897844
+"166","Song et al. 2021","Bray-Curtis","Nrf2KO","male",8,8,0.118407144848157,0.0177653787636549
+"167","Song et al. 2021","Jaccard","Nrf2KO","female",8,8,-0.014744232790611,0.0288504607252086
+"168","Song et al. 2021","Jaccard","Nrf2KO","male",8,8,0.0771443452476385,0.00727794268151202
+"169","Song et al. 2021","Unweighted Unifrac","AOM/DSS-Nrf2KO","female",8,8,-0.0693553564441089,0.00219314676293434
+"170","Song et al. 2021","Unweighted Unifrac","AOM/DSS-Nrf2KO","male",8,8,-0.0325830231540817,0.00148804965316906
+"171","Song et al. 2021","Weighted Unifrac","AOM/DSS-Nrf2KO","female",8,8,0.964963866465425,0.169053072794972
+"172","Song et al. 2021","Weighted Unifrac","AOM/DSS-Nrf2KO","male",8,8,-0.369114807568498,0.120787939529353
+"173","Song et al. 2021","Bray-Curtis","AOM/DSS-Nrf2KO","female",8,8,0.184912963278099,0.0470229317149371
+"174","Song et al. 2021","Bray-Curtis","AOM/DSS-Nrf2KO","male",8,8,-0.342525938182932,0.0585531730126367
+"175","Song et al. 2021","Jaccard","AOM/DSS-Nrf2KO","female",8,8,0.130323562808615,0.0231298804812351
+"176","Song et al. 2021","Jaccard","AOM/DSS-Nrf2KO","male",8,8,-0.253207932877867,0.0333342324691241
+"177","Song et al. 2021","Unweighted Unifrac","AOM/DSS","female",8,8,0.0532579674579723,0.00169919246204253
+"178","Song et al. 2021","Unweighted Unifrac","AOM/DSS","male",8,8,0.0668275499925179,0.000700429361910204
+"179","Song et al. 2021","Weighted Unifrac","AOM/DSS","female",8,8,1.48712411877489,0.0762897912130623
+"180","Song et al. 2021","Weighted Unifrac","AOM/DSS","male",8,8,0.798004627874206,0.113248405311869
+"181","Song et al. 2021","Bray-Curtis","AOM/DSS","female",8,8,0.348040669983762,0.044584320901771
+"182","Song et al. 2021","Bray-Curtis","AOM/DSS","male",8,8,0.181964469622112,0.0177604379899997
+"183","Song et al. 2021","Jaccard","AOM/DSS","female",8,8,0.216910291471319,0.0222545483661397
+"184","Song et al. 2021","Jaccard","AOM/DSS","male",8,8,0.105042210356228,0.00687948535849081
+"185",NA,NA,NA,NA,NA,NA,NA,NA
+"186",NA,NA,NA,NA,NA,NA,NA,NA
+"187",NA,NA,NA,NA,NA,NA,NA,NA
+"188",NA,NA,NA,NA,NA,NA,NA,NA
+"189",NA,NA,NA,NA,NA,NA,NA,NA
+"190",NA,NA,NA,NA,NA,NA,NA,NA
+"191",NA,NA,NA,NA,NA,NA,NA,NA
+"192",NA,NA,NA,NA,NA,NA,NA,NA
+"193",NA,NA,NA,NA,NA,NA,NA,NA
+"194",NA,NA,NA,NA,NA,NA,NA,NA
+"195",NA,NA,NA,NA,NA,NA,NA,NA
+"196",NA,NA,NA,NA,NA,NA,NA,NA
+"197",NA,NA,NA,NA,NA,NA,NA,NA
+"198",NA,NA,NA,NA,NA,NA,NA,NA
+"199",NA,NA,NA,NA,NA,NA,NA,NA
+"200",NA,NA,NA,NA,NA,NA,NA,NA
+"201","Son et al. 2019","Unweighted Unifrac","IL-10 Knockout ","female",8,8,0.0964664302568133,0.0105210384166143
+"202","Son et al. 2019","Unweighted Unifrac","IL-10 Knockout ","male",8,8,0.190244866006431,0.00471891763085755
+"203","Son et al. 2019","Weighted Unifrac","IL-10 Knockout ","female",8,8,0.452579018391649,0.192762567455397
+"204","Son et al. 2019","Weighted Unifrac","IL-10 Knockout ","male",8,8,1.50345470404621,0.205056439280704
+"205","Son et al. 2019","Bray-Curtis","IL-10 Knockout ","female",8,8,0.544525111124813,0.0821286044459635
+"206","Son et al. 2019","Bray-Curtis","IL-10 Knockout ","male",8,8,-0.065411848763994,0.0143071765023287
+"207","Son et al. 2019","Jaccard","IL-10 Knockout ","female",8,8,0.393610525437556,0.0421575425190224
+"208","Son et al. 2019","Jaccard","IL-10 Knockout ","male",8,8,-0.0569782802942846,0.00612333462997406
+"209","Cheema & Pluznick 2019","Unweighted Unifrac","Ang II infusion","female",3,3,-0.374218813924556,0.204152324791756
+"210","Cheema & Pluznick 2019","Unweighted Unifrac","Ang II infusion","male",3,3,-0.258211087583784,0.130614348807381
+"211","Cheema & Pluznick 2019","Weighted Unifrac","Ang II infusion","female",3,3,-1.50100960851861,1.18563498251564
+"212","Cheema & Pluznick 2019","Weighted Unifrac","Ang II infusion","male",3,3,-1.44387985957172,0.714683083357796
+"213","Cheema & Pluznick 2019","Bray-Curtis","Ang II infusion","female",3,3,-0.222483507002984,0.415813816287077
+"214","Cheema & Pluznick 2019","Bray-Curtis","Ang II infusion","male",3,3,-0.30704571190191,0.057684788375864
+"215","Cheema & Pluznick 2019","Jaccard","Ang II infusion","female",3,3,-0.089744587710475,0.215302581623102
+"216","Cheema & Pluznick 2019","Jaccard","Ang II infusion","male",3,3,-0.176198030809843,0.0193599215711487
+"217",NA,NA,NA,NA,NA,NA,NA,NA
+"218",NA,NA,NA,NA,NA,NA,NA,NA
+"219",NA,NA,NA,NA,NA,NA,NA,NA
+"220",NA,NA,NA,NA,NA,NA,NA,NA
+"221",NA,NA,NA,NA,NA,NA,NA,NA
+"222",NA,NA,NA,NA,NA,NA,NA,NA
+"223",NA,NA,NA,NA,NA,NA,NA,NA
+"224",NA,NA,NA,NA,NA,NA,NA,NA
+"225",NA,NA,NA,NA,NA,NA,NA,NA
+"226",NA,NA,NA,NA,NA,NA,NA,NA
+"227",NA,NA,NA,NA,NA,NA,NA,NA
+"228",NA,NA,NA,NA,NA,NA,NA,NA
+"229",NA,NA,NA,NA,NA,NA,NA,NA
+"230",NA,NA,NA,NA,NA,NA,NA,NA
+"231",NA,NA,NA,NA,NA,NA,NA,NA
+"232",NA,NA,NA,NA,NA,NA,NA,NA
+"233",NA,NA,NA,NA,NA,NA,NA,NA
+"234",NA,NA,NA,NA,NA,NA,NA,NA
+"235",NA,NA,NA,NA,NA,NA,NA,NA
+"236",NA,NA,NA,NA,NA,NA,NA,NA
+"237",NA,NA,NA,NA,NA,NA,NA,NA
+"238",NA,NA,NA,NA,NA,NA,NA,NA
+"239",NA,NA,NA,NA,NA,NA,NA,NA
+"240",NA,NA,NA,NA,NA,NA,NA,NA
+"241",NA,NA,NA,NA,NA,NA,NA,NA
+"242",NA,NA,NA,NA,NA,NA,NA,NA
+"243",NA,NA,NA,NA,NA,NA,NA,NA
+"244",NA,NA,NA,NA,NA,NA,NA,NA
+"245",NA,NA,NA,NA,NA,NA,NA,NA
+"246",NA,NA,NA,NA,NA,NA,NA,NA
+"247",NA,NA,NA,NA,NA,NA,NA,NA
+"248",NA,NA,NA,NA,NA,NA,NA,NA
+"249",NA,NA,NA,NA,NA,NA,NA,NA
+"250",NA,NA,NA,NA,NA,NA,NA,NA
+"251",NA,NA,NA,NA,NA,NA,NA,NA
+"252",NA,NA,NA,NA,NA,NA,NA,NA
+"253",NA,NA,NA,NA,NA,NA,NA,NA
+"254",NA,NA,NA,NA,NA,NA,NA,NA
+"255",NA,NA,NA,NA,NA,NA,NA,NA
+"256",NA,NA,NA,NA,NA,NA,NA,NA
+"257",NA,NA,NA,NA,NA,NA,NA,NA
+"258",NA,NA,NA,NA,NA,NA,NA,NA
+"259",NA,NA,NA,NA,NA,NA,NA,NA
+"260",NA,NA,NA,NA,NA,NA,NA,NA
+"261",NA,NA,NA,NA,NA,NA,NA,NA
+"262",NA,NA,NA,NA,NA,NA,NA,NA
+"263",NA,NA,NA,NA,NA,NA,NA,NA
+"264",NA,NA,NA,NA,NA,NA,NA,NA
+"265",NA,NA,NA,NA,NA,NA,NA,NA
+"266",NA,NA,NA,NA,NA,NA,NA,NA
+"267",NA,NA,NA,NA,NA,NA,NA,NA
+"268",NA,NA,NA,NA,NA,NA,NA,NA
+"269",NA,NA,NA,NA,NA,NA,NA,NA
+"270",NA,NA,NA,NA,NA,NA,NA,NA
+"271",NA,NA,NA,NA,NA,NA,NA,NA
+"272",NA,NA,NA,NA,NA,NA,NA,NA
+"273",NA,NA,NA,NA,NA,NA,NA,NA
+"274",NA,NA,NA,NA,NA,NA,NA,NA
+"275",NA,NA,NA,NA,NA,NA,NA,NA
+"276",NA,NA,NA,NA,NA,NA,NA,NA
+"277",NA,NA,NA,NA,NA,NA,NA,NA
+"278",NA,NA,NA,NA,NA,NA,NA,NA
+"279",NA,NA,NA,NA,NA,NA,NA,NA
+"280",NA,NA,NA,NA,NA,NA,NA,NA
+"281","Sun et al. 2020","Unweighted Unifrac","High fat","female",8,7,0.0566128452495404,0.00907640921789926
+"282","Sun et al. 2020","Unweighted Unifrac","High fat","male",8,8,0.00696829394514354,0.015317425080135
+"283","Sun et al. 2020","Weighted Unifrac","High fat","female",8,7,0.000962543534161028,0.0956102491012979
+"284","Sun et al. 2020","Weighted Unifrac","High fat","male",8,8,-0.0362895027205707,0.0738251073446161
+"285","Sun et al. 2020","Bray-Curtis","High fat","female",8,7,-0.00833706683014177,0.0311908344437965
+"286","Sun et al. 2020","Bray-Curtis","High fat","male",8,8,0.0331481003669399,0.026667796688011
+"287","Sun et al. 2020","Jaccard","High fat","female",8,7,-0.00926739827202806,0.0140343577719125
+"288","Sun et al. 2020","Jaccard","High fat","male",8,8,0.0141839584987872,0.0105807780917456
+"289","Sun et al. 2020","Unweighted Unifrac","Pomctm1/tm1, High fat","female",8,7,0.0299290554172358,0.00792440079634773
+"290","Sun et al. 2020","Unweighted Unifrac","Pomctm1/tm1, High fat","male",8,8,0.0561537892640216,0.0162928913921139
+"291","Sun et al. 2020","Weighted Unifrac","Pomctm1/tm1, High fat","female",8,7,-0.39565845217919,0.0983624334208289
+"292","Sun et al. 2020","Weighted Unifrac","Pomctm1/tm1, High fat","male",8,8,0.592683587397961,0.0813111581991696
+"293","Sun et al. 2020","Bray-Curtis","Pomctm1/tm1, High fat","female",8,7,0.0618005474417303,0.0374657812286138
+"294","Sun et al. 2020","Bray-Curtis","Pomctm1/tm1, High fat","male",8,8,0.0214904863444205,0.023383758973094
+"295","Sun et al. 2020","Jaccard","Pomctm1/tm1, High fat","female",8,7,0.0390902715748056,0.0170167215540593
+"296","Sun et al. 2020","Jaccard","Pomctm1/tm1, High fat","male",8,8,0.0188413248813419,0.00950748080304052
+"297","Sun et al. 2020","Unweighted Unifrac","Pomctm1/tm1","female",8,8,-0.185086727483065,0.00336100075485665
+"298","Sun et al. 2020","Unweighted Unifrac","Pomctm1/tm1","male",8,8,-0.0768634342795457,0.0152976483123788
+"299","Sun et al. 2020","Weighted Unifrac","Pomctm1/tm1","female",8,8,-0.114437385098921,0.105333353917374
+"300","Sun et al. 2020","Weighted Unifrac","Pomctm1/tm1","male",8,8,0.196673042230119,0.0613411500060597
+"301","Sun et al. 2020","Bray-Curtis","Pomctm1/tm1","female",8,8,0.156242257703434,0.0224686911073081
+"302","Sun et al. 2020","Bray-Curtis","Pomctm1/tm1","male",8,8,0.00451919355273041,0.0257427034150107
+"303","Sun et al. 2020","Jaccard","Pomctm1/tm1","female",8,8,0.101200632231142,0.0102022084398891
+"304","Sun et al. 2020","Jaccard","Pomctm1/tm1","male",8,8,0.00277603536044308,0.010404308038826
+"305","Tam et al. 2020","Unweighted Unifrac","Smoke exposed","female",10,10,0.0129129067370122,0.00244728525719955
+"306","Tam et al. 2020","Unweighted Unifrac","Smoke exposed","male",10,10,-0.0207795333957587,0.00669871712917188
+"307","Tam et al. 2020","Weighted Unifrac","Smoke exposed","female",10,10,-0.382534323391547,0.0501693816794026
+"308","Tam et al. 2020","Weighted Unifrac","Smoke exposed","male",10,10,0.164551856245395,0.0537009479817972
+"309","Tam et al. 2020","Bray-Curtis","Smoke exposed","female",10,10,0.0118158646779549,0.00351967171379719
+"310","Tam et al. 2020","Bray-Curtis","Smoke exposed","male",10,10,-0.129432774013608,0.0111390692861952
+"311","Tam et al. 2020","Jaccard","Smoke exposed","female",10,10,0.0114337661264472,0.00134672375602793
+"312","Tam et al. 2020","Jaccard","Smoke exposed","male",10,10,-0.0767820512815293,0.00450162995638586
+"313","Tam et al. 2020","Unweighted Unifrac","""Smoke exposed, ovariectomy""","female",10,8,-0.0010765236323806,0.00130360231878664
+"314","Tam et al. 2020","Weighted Unifrac","""Smoke exposed, ovariectomy""","female",10,8,-0.546240399667807,0.0403578388253256
+"315","Tam et al. 2020","Bray-Curtis","""Smoke exposed, ovariectomy""","female",10,8,-0.178262687923663,0.00659698812292462
+"316","Tam et al. 2020","Jaccard","""Smoke exposed, ovariectomy""","female",10,8,-0.117370737028745,0.002795976992817
+"317","Tam et al. 2020","Unweighted Unifrac","ovariectomy","female",10,10,0.143544570970742,0.000978295691790204
+"318","Tam et al. 2020","Weighted Unifrac","ovariectomy","female",10,10,-0.33317038946787,0.0435405074249072
+"319","Tam et al. 2020","Bray-Curtis","ovariectomy","female",10,10,0.0150775400857499,0.00502016926314548
+"320","Tam et al. 2020","Jaccard","ovariectomy","female",10,10,0.00927375267172617,0.00196076729455009
+"321","Song et al. 2020","Unweighted Unifrac","E2-supplemented","male",5,12,0.0972112446978436,0.00371175837460214
+"322","Song et al. 2020","Weighted Unifrac","E2-supplemented","male",5,12,-0.0236442305737594,0.35288193721018
+"323","Song et al. 2020","Bray-Curtis","E2-supplemented","male",5,12,-0.183591812825133,0.038649832810629
+"324","Song et al. 2020","Jaccard","E2-supplemented","male",5,12,-0.0847091519986255,0.0142526965005456
+"325","Song et al. 2020","Unweighted Unifrac","AOM/DSS E2-supplemented","male",5,12,0.0259269805030061,0.00391921986365438
+"326","Song et al. 2020","Weighted Unifrac","AOM/DSS E2-supplemented","male",5,12,-0.0824532775673694,0.345197698635865
+"327","Song et al. 2020","Bray-Curtis","AOM/DSS E2-supplemented","male",5,12,-0.251056872428353,0.0422901626461559
+"328","Song et al. 2020","Jaccard","AOM/DSS E2-supplemented","male",5,12,-0.126105587726279,0.0159586615056085
+"329","Song et al. 2020","Unweighted Unifrac","AOM/DSS","male",5,12,0.0373229672562178,0.00323248654541412
+"330","Song et al. 2020","Weighted Unifrac","AOM/DSS","male",5,12,-0.221758948245655,0.385253763201724
+"331","Song et al. 2020","Bray-Curtis","AOM/DSS","male",5,12,-0.122307506931326,0.039430149371051
+"332","Song et al. 2020","Jaccard","AOM/DSS","male",5,12,-0.0449191626699124,0.0145778794448845
+"333","Song et al. 2020","Unweighted Unifrac","ovariectomized ","female",11,7,-0.0544948392217242,0.0019683620035941
+"334","Song et al. 2020","Weighted Unifrac","ovariectomized ","female",11,7,0.430913978416022,0.15875049057272
+"335","Song et al. 2020","Bray-Curtis","ovariectomized ","female",11,7,0.0434198286224656,0.0226126115888268
+"336","Song et al. 2020","Jaccard","ovariectomized ","female",11,7,0.0205730730990041,0.00952874439424714
+"337","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS-ERbKOVil","female",4,6,-0.121978289590334,0.0196878184638132
+"338","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS-ERbKOVil","female",4,6,-0.0187003080999065,0.00630068866242793
+"339","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS-ERbKOVil","male",4,7,-0.0835607455278115,0.0250413685426766
+"340","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS-ERbKOVil","male",4,7,0.084472541835331,0.0217813654422375
+"341","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS-ERbKOVil","female",4,6,0.927327142790487,0.0951752098568682
+"342","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS-ERbKOVil","female",4,6,1.00984064244593,0.0638429767487454
+"343","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS-ERbKOVil","male",4,7,0.456777924518766,0.308260199699906
+"344","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS-ERbKOVil","male",4,7,0.673322199110701,0.18392452866296
+"345","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS-ERbKOVil","female",4,6,0.255638006568338,0.0780685219293641
+"346","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS-ERbKOVil","female",4,6,0.224537393022972,0.0389592969147952
+"347","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS-ERbKOVil","male",4,7,0.0346809103489305,0.0400124518661535
+"348","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS-ERbKOVil","male",4,7,0.143001340596898,0.018260557303147
+"349","Ibrahim et al. 2019","Jaccard","AOM/DSS-ERbKOVil","female",4,6,0.197766440137828,0.0432583243222799
+"350","Ibrahim et al. 2019","Jaccard","AOM/DSS-ERbKOVil","female",4,6,0.164214615123091,0.0174450410961983
+"351","Ibrahim et al. 2019","Jaccard","AOM/DSS-ERbKOVil","male",4,7,0.0434856356870058,0.0166980154234717
+"352","Ibrahim et al. 2019","Jaccard","AOM/DSS-ERbKOVil","male",4,7,0.109985886419685,0.00866713023023555
+"353","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS","female",4,3,-0.103379216512592,0.0529850792783335
+"354","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS","female",4,3,-0.000101235022164768,0.0395979494769482
+"355","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS","male",4,7,-0.0274888981462556,0.0402784407457634
+"356","Ibrahim et al. 2019","Unweighted Unifrac","AOM/DSS","male",4,7,0.140544389216887,0.0370184376453243
+"357","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS","female",4,3,1.95891306309835,0.536121339974942
+"358","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS","female",4,3,2.0414265627538,0.504789106866819
+"359","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS","male",4,7,-0.00140341843329629,0.1644185020067
+"360","Ibrahim et al. 2019","Weighted Unifrac","AOM/DSS","male",4,7,0.215140856158639,0.0400828309697533
+"361","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS","female",4,3,0.13409549773552,0.0834601043292365
+"362","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS","female",4,3,0.102994884190154,0.0443508793146676
+"363","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS","male",4,7,0.0126376058316402,0.05380114721712
+"364","Ibrahim et al. 2019","Bray-Curtis","AOM/DSS","male",4,7,0.120958036079608,0.0320492526541134
+"365","Ibrahim et al. 2019","Jaccard","AOM/DSS","female",4,3,0.0861997428521642,0.0451480893075555
+"366","Ibrahim et al. 2019","Jaccard","AOM/DSS","female",4,3,0.0526479178374277,0.0193348060814739
+"367","Ibrahim et al. 2019","Jaccard","AOM/DSS","male",4,7,0.00348750096164749,0.0317004671521953
+"368","Ibrahim et al. 2019","Jaccard","AOM/DSS","male",4,7,0.0699877516943267,0.0236695819589592
+"369",NA,NA,NA,NA,NA,NA,NA,NA
+"370",NA,NA,NA,NA,NA,NA,NA,NA
+"371",NA,NA,NA,NA,NA,NA,NA,NA
+"372",NA,NA,NA,NA,NA,NA,NA,NA
+"373",NA,NA,NA,NA,NA,NA,NA,NA
+"374",NA,NA,NA,NA,NA,NA,NA,NA
+"375",NA,NA,NA,NA,NA,NA,NA,NA
+"376",NA,NA,NA,NA,NA,NA,NA,NA
+"377",NA,NA,NA,NA,NA,NA,NA,NA
+"378",NA,NA,NA,NA,NA,NA,NA,NA
+"379",NA,NA,NA,NA,NA,NA,NA,NA
+"380",NA,NA,NA,NA,NA,NA,NA,NA
+"381",NA,NA,NA,NA,NA,NA,NA,NA
+"382",NA,NA,NA,NA,NA,NA,NA,NA
+"383",NA,NA,NA,NA,NA,NA,NA,NA
+"384",NA,NA,NA,NA,NA,NA,NA,NA
+"385",NA,NA,NA,NA,NA,NA,NA,NA
+"386",NA,NA,NA,NA,NA,NA,NA,NA
+"387",NA,NA,NA,NA,NA,NA,NA,NA
+"388",NA,NA,NA,NA,NA,NA,NA,NA
+"389",NA,NA,NA,NA,NA,NA,NA,NA
+"390",NA,NA,NA,NA,NA,NA,NA,NA
+"391",NA,NA,NA,NA,NA,NA,NA,NA
+"392",NA,NA,NA,NA,NA,NA,NA,NA
+"393",NA,NA,NA,NA,NA,NA,NA,NA
+"394",NA,NA,NA,NA,NA,NA,NA,NA
+"395",NA,NA,NA,NA,NA,NA,NA,NA
+"396",NA,NA,NA,NA,NA,NA,NA,NA
+"397",NA,NA,NA,NA,NA,NA,NA,NA
+"398",NA,NA,NA,NA,NA,NA,NA,NA
+"399",NA,NA,NA,NA,NA,NA,NA,NA
+"400",NA,NA,NA,NA,NA,NA,NA,NA
+"401",NA,NA,NA,NA,NA,NA,NA,NA
+"402",NA,NA,NA,NA,NA,NA,NA,NA
+"403",NA,NA,NA,NA,NA,NA,NA,NA
+"404",NA,NA,NA,NA,NA,NA,NA,NA
+"405",NA,NA,NA,NA,NA,NA,NA,NA
+"406",NA,NA,NA,NA,NA,NA,NA,NA
+"407",NA,NA,NA,NA,NA,NA,NA,NA
+"408",NA,NA,NA,NA,NA,NA,NA,NA
+"409",NA,NA,NA,NA,NA,NA,NA,NA
+"410",NA,NA,NA,NA,NA,NA,NA,NA
+"411",NA,NA,NA,NA,NA,NA,NA,NA
+"412",NA,NA,NA,NA,NA,NA,NA,NA
+"413",NA,NA,NA,NA,NA,NA,NA,NA
+"414",NA,NA,NA,NA,NA,NA,NA,NA
+"415",NA,NA,NA,NA,NA,NA,NA,NA
+"416",NA,NA,NA,NA,NA,NA,NA,NA
+"417",NA,NA,NA,NA,NA,NA,NA,NA
+"418",NA,NA,NA,NA,NA,NA,NA,NA
+"419",NA,NA,NA,NA,NA,NA,NA,NA
+"420",NA,NA,NA,NA,NA,NA,NA,NA
+"421",NA,NA,NA,NA,NA,NA,NA,NA
+"422",NA,NA,NA,NA,NA,NA,NA,NA
+"423",NA,NA,NA,NA,NA,NA,NA,NA
+"424",NA,NA,NA,NA,NA,NA,NA,NA
+"425",NA,NA,NA,NA,NA,NA,NA,NA
+"426",NA,NA,NA,NA,NA,NA,NA,NA
+"427",NA,NA,NA,NA,NA,NA,NA,NA
+"428",NA,NA,NA,NA,NA,NA,NA,NA
+"429",NA,NA,NA,NA,NA,NA,NA,NA
+"430",NA,NA,NA,NA,NA,NA,NA,NA
+"431",NA,NA,NA,NA,NA,NA,NA,NA
+"432",NA,NA,NA,NA,NA,NA,NA,NA
+"433","Tashiro et al. 2020","Unweighted Unifrac","Cellulose","female",8,8,-0.464926062997903,0.0064231524743551
+"434","Tashiro et al. 2020","Unweighted Unifrac","Cellulose","male",8,8,0.0787913855178195,0.00332868572725101
+"435","Tashiro et al. 2020","Weighted Unifrac","Cellulose","female",8,8,-0.14588552142154,0.108469525873462
+"436","Tashiro et al. 2020","Weighted Unifrac","Cellulose","male",8,8,1.04934798040414,0.149674907988113
+"437","Tashiro et al. 2020","Bray-Curtis","Cellulose","female",8,8,-0.368521854958215,0.0443102237876953
+"438","Tashiro et al. 2020","Bray-Curtis","Cellulose","male",8,8,0.124401737781413,0.0835107618181345
+"439","Tashiro et al. 2020","Jaccard","Cellulose","female",8,8,-0.213363116959468,0.0264509354295155
+"440","Tashiro et al. 2020","Jaccard","Cellulose","male",8,8,0.0971967449796345,0.0472889081796345
+"441","Tashiro et al. 2020","Unweighted Unifrac","Pectin","female",8,8,-0.12418029815726,0.00453482891787695
+"442","Tashiro et al. 2020","Unweighted Unifrac","Pectin","male",8,8,0.00950828790293565,0.00539390341771104
+"443","Tashiro et al. 2020","Weighted Unifrac","Pectin","female",8,8,1.03287567833883,0.189570595771765
+"444","Tashiro et al. 2020","Weighted Unifrac","Pectin","male",8,8,2.3599878797889,0.155242686759576
+"445","Tashiro et al. 2020","Bray-Curtis","Pectin","female",8,8,-0.0308095542171405,0.0660515385325099
+"446","Tashiro et al. 2020","Bray-Curtis","Pectin","male",8,8,0.12970861086401,0.0803353427064487
+"447","Tashiro et al. 2020","Jaccard","Pectin","female",8,8,0.0083824010259619,0.0354180997201944
+"448","Tashiro et al. 2020","Jaccard","Pectin","male",8,8,0.0985534776816424,0.043477239563019
+"449","Tashiro et al. 2020","Unweighted Unifrac","Fiberfree","female",8,8,-0.159938631288803,0.0292207169805758
+"450","Tashiro et al. 2020","Unweighted Unifrac","Fiberfree","male",8,8,0.396150404955578,0.0256570587577999
+"451","Tashiro et al. 2020","Weighted Unifrac","Fiberfree","female",8,8,-0.399728646893535,0.116779367203561
+"452","Tashiro et al. 2020","Weighted Unifrac","Fiberfree","male",8,8,-0.0949514598776113,0.11945533998779
+"453","Tashiro et al. 2020","Bray-Curtis","Fiberfree","female",8,8,-0.559636805124742,0.0487732382405123
+"454","Tashiro et al. 2020","Bray-Curtis","Fiberfree","male",8,8,-0.264635899037391,0.0806233839341677
+"455","Tashiro et al. 2020","Jaccard","Fiberfree","female",8,8,-0.363569757929131,0.0312739589085572
+"456","Tashiro et al. 2020","Jaccard","Fiberfree","male",8,8,-0.175814086511936,0.0485747054771133
+"457","Song et al. 2022","Unweighted Unifrac","AOM/DSS","female",4,7,0.0427537727489248,0.00395110313537157
+"458","Song et al. 2022","Unweighted Unifrac","AOM/DSS","male",4,10,0.186499019506975,0.00132690487936879
+"459","Song et al. 2022","Weighted Unifrac","AOM/DSS","female",4,7,-0.359307591577552,0.467217019979492
+"460","Song et al. 2022","Weighted Unifrac","AOM/DSS","male",4,10,0.852858304632606,0.21946148657017
+"461","Song et al. 2022","Bray-Curtis","AOM/DSS","female",4,7,0.342162236991687,0.0837296197164002
+"462","Song et al. 2022","Bray-Curtis","AOM/DSS","male",4,10,0.279455433990139,0.0367882934719277
+"463","Song et al. 2022","Jaccard","AOM/DSS","female",4,7,0.260142676323207,0.0461400128417578
+"464","Song et al. 2022","Jaccard","AOM/DSS","male",4,10,0.237289954360435,0.0230774100291077
+"465","Song et al. 2022","Unweighted Unifrac","orchiectomized_ AOM/DSS_ steroid-injected","male",4,6,0.158619978746846,0.00109630178647553
+"466","Song et al. 2022","Weighted Unifrac","orchiectomized_ AOM/DSS_ steroid-injected","male",4,6,-0.13370675371056,0.110376463015003
+"467","Song et al. 2022","Bray-Curtis","orchiectomized_ AOM/DSS_ steroid-injected","male",4,6,-0.0299616895575058,0.0465271073964925
+"468","Song et al. 2022","Jaccard","orchiectomized_ AOM/DSS_ steroid-injected","male",4,6,-0.012993832472104,0.0308985996593139
+"469","Song et al. 2022","Unweighted Unifrac","orchiectomized_ AOM/DSS","male",4,10,0.200429097600564,0.00153664056060799
+"470","Song et al. 2022","Weighted Unifrac","orchiectomized_ AOM/DSS","male",4,10,0.722317586509132,0.232306811747509
+"471","Song et al. 2022","Bray-Curtis","orchiectomized_ AOM/DSS","male",4,10,0.283414765267272,0.0496551357398472
+"472","Song et al. 2022","Jaccard","orchiectomized_ AOM/DSS","male",4,10,0.238894131323289,0.029993463314504
+"473","Song et al. 2022","Unweighted Unifrac","orchiectomized","male",4,4,0.0382854838362844,0.00146964228107966
+"474","Song et al. 2022","Weighted Unifrac","orchiectomized","male",4,4,-0.165001710374684,0.260570574268344
+"475","Song et al. 2022","Bray-Curtis","orchiectomized","male",4,4,-0.138442730327967,0.0880496986318023
+"476","Song et al. 2022","Jaccard","orchiectomized","male",4,4,-0.113479308565506,0.0604195607640044
+"477","Song et al. 2022","Unweighted Unifrac","AOM/DSS_ steroid-injected","female",4,4,-0.0503042330187366,0.00910941546632411
+"478","Song et al. 2022","Unweighted Unifrac","AOM/DSS_ steroid-injected","male",4,8,0.148679991888931,0.00229005350586469
+"479","Song et al. 2022","Weighted Unifrac","AOM/DSS_ steroid-injected","female",4,4,-0.922854741653365,0.484134136433355
+"480","Song et al. 2022","Weighted Unifrac","AOM/DSS_ steroid-injected","male",4,8,0.300472336820447,0.152739568986103
+"481","Song et al. 2022","Bray-Curtis","AOM/DSS_ steroid-injected","female",4,4,-0.106614930764484,0.168472950877028
+"482","Song et al. 2022","Bray-Curtis","AOM/DSS_ steroid-injected","male",4,8,0.291015161900687,0.0565531311023307
+"483","Song et al. 2022","Jaccard","AOM/DSS_ steroid-injected","female",4,4,-0.0928448470684433,0.11700110117981
+"484","Song et al. 2022","Jaccard","AOM/DSS_ steroid-injected","male",4,8,0.24076941612223,0.0356129232697087
+"485","Gubert et al. 2022","Unweighted Unifrac","WT_Enviromental enrichment ","female",8,8,-0.00611061984095532,0.00598444478974062
+"486","Gubert et al. 2022","Unweighted Unifrac","WT_Enviromental enrichment ","female",8,8,-0.00569111538903659,0.00496712163624929
+"487","Gubert et al. 2022","Unweighted Unifrac","WT_Enviromental enrichment ","male",8,8,0.030537367437362,0.00474455342147309
+"488","Gubert et al. 2022","Unweighted Unifrac","WT_Enviromental enrichment ","male",8,8,0.127115712151325,0.0052960852316219
+"489","Gubert et al. 2022","Weighted Unifrac","WT_Enviromental enrichment ","female",8,8,-0.534447405118765,0.16679313689785
+"490","Gubert et al. 2022","Weighted Unifrac","WT_Enviromental enrichment ","female",8,8,-0.465441209367355,0.138369720802487
+"491","Gubert et al. 2022","Weighted Unifrac","WT_Enviromental enrichment ","male",8,8,0.467107334763803,0.120873320959209
+"492","Gubert et al. 2022","Weighted Unifrac","WT_Enviromental enrichment ","male",8,8,-0.323147612313786,0.0703964969959986
+"493","Gubert et al. 2022","Bray-Curtis","WT_Enviromental enrichment ","female",8,8,-0.201284141863962,0.0179001715634932
+"494","Gubert et al. 2022","Bray-Curtis","WT_Enviromental enrichment ","female",8,8,-0.168146807831052,0.0157434310384831
+"495","Gubert et al. 2022","Bray-Curtis","WT_Enviromental enrichment ","male",8,8,0.103137598503454,0.0135735304767093
+"496","Gubert et al. 2022","Bray-Curtis","WT_Enviromental enrichment ","male",8,8,0.0957780062158085,0.0173740792691254
+"497","Gubert et al. 2022","Jaccard","WT_Enviromental enrichment ","female",8,8,-0.127393967620701,0.00802070445628666
+"498","Gubert et al. 2022","Jaccard","WT_Enviromental enrichment ","female",8,8,-0.108214993000182,0.00681641744965928
+"499","Gubert et al. 2022","Jaccard","WT_Enviromental enrichment ","male",8,8,0.067367158074456,0.00501202134006114
+"500","Gubert et al. 2022","Jaccard","WT_Enviromental enrichment ","male",8,8,0.0581794650276503,0.00653419672022025
+"501","Gubert et al. 2022","Unweighted Unifrac","WT_Exercise","female",8,8,-0.0602238336038565,0.00889165957917736
+"502","Gubert et al. 2022","Unweighted Unifrac","WT_Exercise","female",8,8,-0.0598043291519377,0.00787433642568603
+"503","Gubert et al. 2022","Unweighted Unifrac","WT_Exercise","male",8,8,-0.0191289279593559,0.00245794878398256
+"504","Gubert et al. 2022","Unweighted Unifrac","WT_Exercise","male",8,8,0.0774494167546068,0.00300948059413136
+"505","Gubert et al. 2022","Weighted Unifrac","WT_Exercise","female",8,8,-0.189020351331066,0.237099131998426
+"506","Gubert et al. 2022","Weighted Unifrac","WT_Exercise","female",8,8,-0.120014155579655,0.208675715903062
+"507","Gubert et al. 2022","Weighted Unifrac","WT_Exercise","male",8,8,0.104594145096839,0.0814362343213935
+"508","Gubert et al. 2022","Weighted Unifrac","WT_Exercise","male",8,8,-0.685660801980751,0.0309594103581828
+"509","Gubert et al. 2022","Bray-Curtis","WT_Exercise","female",8,8,-0.203020619011275,0.0196924068206738
+"510","Gubert et al. 2022","Bray-Curtis","WT_Exercise","female",8,8,-0.169883284978365,0.0175356662956637
+"511","Gubert et al. 2022","Bray-Curtis","WT_Exercise","male",8,8,-0.30573701982345,0.00958020612733983
+"512","Gubert et al. 2022","Bray-Curtis","WT_Exercise","male",8,8,-0.313096612111095,0.0133807549197559
+"513","Gubert et al. 2022","Jaccard","WT_Exercise","female",8,8,-0.126695264553666,0.00855427350421665
+"514","Gubert et al. 2022","Jaccard","WT_Exercise","female",8,8,-0.107516289933148,0.00734998649758927
+"515","Gubert et al. 2022","Jaccard","WT_Exercise","male",8,8,-0.191387786021865,0.00402983539605195
+"516","Gubert et al. 2022","Jaccard","WT_Exercise","male",8,8,-0.200575479068671,0.00555201077621105
+"517","Gubert et al. 2022","Unweighted Unifrac","R6/1_Enviromental enrichment ","female",8,7,-0.0765708891495753,0.00663179002471451
+"518","Gubert et al. 2022","Unweighted Unifrac","R6/1_Enviromental enrichment ","female",8,7,-0.0761513846976566,0.00561446687122319
+"519","Gubert et al. 2022","Unweighted Unifrac","R6/1_Enviromental enrichment ","male",8,8,-0.0334334205143461,0.00343725712963773
+"520","Gubert et al. 2022","Unweighted Unifrac","R6/1_Enviromental enrichment ","male",8,8,0.0631449241996166,0.00398878893978653
+"521","Gubert et al. 2022","Weighted Unifrac","R6/1_Enviromental enrichment ","female",8,7,0.148096371209413,0.166067303187182
+"522","Gubert et al. 2022","Weighted Unifrac","R6/1_Enviromental enrichment ","female",8,7,0.217102566960823,0.137643887091818
+"523","Gubert et al. 2022","Weighted Unifrac","R6/1_Enviromental enrichment ","male",8,8,0.877059927493698,0.326238858526768
+"524","Gubert et al. 2022","Weighted Unifrac","R6/1_Enviromental enrichment ","male",8,8,0.0868049804161089,0.275762034563557
+"525","Gubert et al. 2022","Bray-Curtis","R6/1_Enviromental enrichment ","female",8,7,-0.0789067137217009,0.0174930507545721
+"526","Gubert et al. 2022","Bray-Curtis","R6/1_Enviromental enrichment ","female",8,7,-0.0457693796887911,0.0153363102295619
+"527","Gubert et al. 2022","Bray-Curtis","R6/1_Enviromental enrichment ","male",8,8,-0.173332727612793,0.0106847550196556
+"528","Gubert et al. 2022","Bray-Curtis","R6/1_Enviromental enrichment ","male",8,8,-0.180692319900439,0.0144853038120718
+"529","Gubert et al. 2022","Jaccard","R6/1_Enviromental enrichment ","female",8,7,-0.047352986956397,0.00735516732832937
+"530","Gubert et al. 2022","Jaccard","R6/1_Enviromental enrichment ","female",8,7,-0.0281740123358782,0.00615088032170199
+"531","Gubert et al. 2022","Jaccard","R6/1_Enviromental enrichment ","male",8,8,-0.103592251029223,0.00441075394575469
+"532","Gubert et al. 2022","Jaccard","R6/1_Enviromental enrichment ","male",8,8,-0.112779944076028,0.00593292932591379
+"533","Gubert et al. 2022","Unweighted Unifrac","R6/1_Exercise","female",8,8,0.00182492019120725,0.00587750123071655
+"534","Gubert et al. 2022","Unweighted Unifrac","R6/1_Exercise","female",8,8,0.00224442464312585,0.00486017807722523
+"535","Gubert et al. 2022","Unweighted Unifrac","R6/1_Exercise","male",8,8,-0.0924454211227036,0.0065344549257919
+"536","Gubert et al. 2022","Unweighted Unifrac","R6/1_Exercise","male",8,8,0.00413292359125929,0.0070859867359407
+"537","Gubert et al. 2022","Weighted Unifrac","R6/1_Exercise","female",8,8,-0.064664740631551,0.173352584005004
+"538","Gubert et al. 2022","Weighted Unifrac","R6/1_Exercise","female",8,8,0.00434145511985928,0.144929167909641
+"539","Gubert et al. 2022","Weighted Unifrac","R6/1_Exercise","male",8,8,0.482545006534224,0.171208018384729
+"540","Gubert et al. 2022","Weighted Unifrac","R6/1_Exercise","male",8,8,-0.307709940543365,0.120731194421519
+"541","Gubert et al. 2022","Bray-Curtis","R6/1_Exercise","female",8,8,-0.148350454199053,0.0210962329335275
+"542","Gubert et al. 2022","Bray-Curtis","R6/1_Exercise","female",8,8,-0.115213120166144,0.0189394924085173
+"543","Gubert et al. 2022","Bray-Curtis","R6/1_Exercise","male",8,8,-0.186144103224175,0.00691248029422591
+"544","Gubert et al. 2022","Bray-Curtis","R6/1_Exercise","male",8,8,-0.193503695511821,0.010713029086642
+"545","Gubert et al. 2022","Jaccard","R6/1_Exercise","female",8,8,-0.091533988658715,0.00912688266948533
+"546","Gubert et al. 2022","Jaccard","R6/1_Exercise","female",8,8,-0.0723550140381962,0.00792259566285795
+"547","Gubert et al. 2022","Jaccard","R6/1_Exercise","male",8,8,-0.112443151951774,0.00260303279198223
+"548","Gubert et al. 2022","Jaccard","R6/1_Exercise","male",8,8,-0.12163084499858,0.00412520817214133
+"549",NA,NA,NA,NA,NA,NA,NA,NA
+"550",NA,NA,NA,NA,NA,NA,NA,NA
+"551",NA,NA,NA,NA,NA,NA,NA,NA
+"552",NA,NA,NA,NA,NA,NA,NA,NA
+"553",NA,NA,NA,NA,NA,NA,NA,NA
+"554",NA,NA,NA,NA,NA,NA,NA,NA
+"555",NA,NA,NA,NA,NA,NA,NA,NA
+"556",NA,NA,NA,NA,NA,NA,NA,NA
+"557",NA,NA,NA,NA,NA,NA,NA,NA
+"558",NA,NA,NA,NA,NA,NA,NA,NA
+"559",NA,NA,NA,NA,NA,NA,NA,NA
+"560",NA,NA,NA,NA,NA,NA,NA,NA
+"561",NA,NA,NA,NA,NA,NA,NA,NA
+"562",NA,NA,NA,NA,NA,NA,NA,NA
+"563",NA,NA,NA,NA,NA,NA,NA,NA
+"564",NA,NA,NA,NA,NA,NA,NA,NA
+"565",NA,NA,NA,NA,NA,NA,NA,NA
+"566",NA,NA,NA,NA,NA,NA,NA,NA
+"567",NA,NA,NA,NA,NA,NA,NA,NA
+"568",NA,NA,NA,NA,NA,NA,NA,NA
+"569",NA,NA,NA,NA,NA,NA,NA,NA
+"570",NA,NA,NA,NA,NA,NA,NA,NA
+"571",NA,NA,NA,NA,NA,NA,NA,NA
+"572",NA,NA,NA,NA,NA,NA,NA,NA
+"573",NA,NA,NA,NA,NA,NA,NA,NA
+"574",NA,NA,NA,NA,NA,NA,NA,NA
+"575",NA,NA,NA,NA,NA,NA,NA,NA
+"576",NA,NA,NA,NA,NA,NA,NA,NA
+"577",NA,NA,NA,NA,NA,NA,NA,NA
+"578",NA,NA,NA,NA,NA,NA,NA,NA
+"579",NA,NA,NA,NA,NA,NA,NA,NA
+"580",NA,NA,NA,NA,NA,NA,NA,NA
+"581",NA,NA,NA,NA,NA,NA,NA,NA
+"582",NA,NA,NA,NA,NA,NA,NA,NA
+"583",NA,NA,NA,NA,NA,NA,NA,NA
+"584",NA,NA,NA,NA,NA,NA,NA,NA
+"585",NA,NA,NA,NA,NA,NA,NA,NA
+"586",NA,NA,NA,NA,NA,NA,NA,NA
+"587",NA,NA,NA,NA,NA,NA,NA,NA
+"588",NA,NA,NA,NA,NA,NA,NA,NA
+"589",NA,NA,NA,NA,NA,NA,NA,NA
+"590",NA,NA,NA,NA,NA,NA,NA,NA
+"591",NA,NA,NA,NA,NA,NA,NA,NA
+"592",NA,NA,NA,NA,NA,NA,NA,NA
+"593",NA,NA,NA,NA,NA,NA,NA,NA
+"594",NA,NA,NA,NA,NA,NA,NA,NA
+"595",NA,NA,NA,NA,NA,NA,NA,NA
+"596",NA,NA,NA,NA,NA,NA,NA,NA
+"597","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected","female",3,5,-0.0417381344640664,0.0439581278848946
+"598","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected","male",2,4,-0.471676084464835,2.04311968230441
+"599","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected","female",3,5,-0.13771913219433,1.1927695270029
+"600","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected","male",2,4,-0.0360454050574093,5.86168456314141
+"601","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected","female",3,5,0.295448241549892,0.202822511853056
+"602","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected","male",2,4,-0.830080314362228,0.156134093244858
+"603","Ramakrishna et al. 2020","Jaccard","HSV1-infected","female",3,5,0.159510576991254,0.0616830010026714
+"604","Ramakrishna et al. 2020","Jaccard","HSV1-infected","male",2,4,-0.564214610515069,0.0813115352710315
+"605","Ramakrishna et al. 2020","Unweighted Unifrac","ACV-injected","female",3,2,0.0410133154658073,0.135590412942533
+"606","Ramakrishna et al. 2020","Unweighted Unifrac","ACV-injected","male",2,3,0.0103018716855688,0.0954382290988854
+"607","Ramakrishna et al. 2020","Weighted Unifrac","ACV-injected","female",3,2,0.321102285300786,5.30766146160873
+"608","Ramakrishna et al. 2020","Weighted Unifrac","ACV-injected","male",2,3,-0.391830667288967,5.9165117821059
+"609","Ramakrishna et al. 2020","Bray-Curtis","ACV-injected","female",3,2,0.466152623756549,0.380050406149776
+"610","Ramakrishna et al. 2020","Bray-Curtis","ACV-injected","male",2,3,-0.174155191400005,0.205702770902588
+"611","Ramakrishna et al. 2020","Jaccard","ACV-injected","female",3,2,0.239989108903865,0.14591787842142
+"612","Ramakrishna et al. 2020","Jaccard","ACV-injected","male",2,3,-0.12808329994486,0.0601216791045504
+"613","Ramakrishna et al. 2020","Unweighted Unifrac","IVIG-injected","female",3,5,-0.595215741962064,1.27399390500455
+"614","Ramakrishna et al. 2020","Unweighted Unifrac","IVIG-injected","male",2,5,-6.29451887777129,0.473705046311329
+"615","Ramakrishna et al. 2020","Weighted Unifrac","IVIG-injected","female",3,5,0.685713803636407,1.02892060731734
+"616","Ramakrishna et al. 2020","Weighted Unifrac","IVIG-injected","male",2,5,-1.14352366976165,5.66037439749272
+"617","Ramakrishna et al. 2020","Bray-Curtis","IVIG-injected","female",3,5,0.041947647733959,0.322075695633576
+"618","Ramakrishna et al. 2020","Bray-Curtis","IVIG-injected","male",2,5,-0.909885623341739,0.112013849411311
+"619","Ramakrishna et al. 2020","Jaccard","IVIG-injected","female",3,5,0.0121967786951345,0.0954042478845826
+"620","Ramakrishna et al. 2020","Jaccard","IVIG-injected","male",2,5,-0.57936041641672,0.0309999200983431
+"621","Ramakrishna et al. 2020","Unweighted Unifrac","ACV+IVIG-injected","female",3,4,0.0137500639321639,0.0891688771648654
+"622","Ramakrishna et al. 2020","Unweighted Unifrac","ACV+IVIG-injected","male",2,1,-0.0563295688177146,0.0600614166323635
+"623","Ramakrishna et al. 2020","Weighted Unifrac","ACV+IVIG-injected","female",3,4,-0.251795095600151,2.76800009385645
+"624","Ramakrishna et al. 2020","Weighted Unifrac","ACV+IVIG-injected","male",2,1,1.32095414820069,8.06924466581529
+"625","Ramakrishna et al. 2020","Bray-Curtis","ACV+IVIG-injected","female",3,4,-0.0855860359401262,0.253858355259887
+"626","Ramakrishna et al. 2020","Bray-Curtis","ACV+IVIG-injected","male",2,1,0.162656439860116,0.101233363939139
+"627","Ramakrishna et al. 2020","Jaccard","ACV+IVIG-injected","female",3,4,-0.087199648238293,0.0935171136795602
+"628","Ramakrishna et al. 2020","Jaccard","ACV+IVIG-injected","male",2,1,0.0859144227407014,0.0322859500830518
+"629","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; IVIG-injected","female",3,1,0.298506386320583,2.62915732713766
+"630","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; IVIG-injected","male",2,3,-0.0280406703941518,0.0489038246071766
+"631","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; IVIG-injected","female",3,1,-3.66663419447074,3.41339923461979
+"632","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; IVIG-injected","male",2,3,-0.682715394220782,7.58872997707203
+"633","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; IVIG-injected","female",3,1,0.486489682073736,0.331276616247168
+"634","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; IVIG-injected","male",2,3,-0.0729361624729902,0.0816841033781042
+"635","Ramakrishna et al. 2020","Jaccard","HSV1-infected; IVIG-injected","female",3,1,0.24999220515723,0.0991826055345206
+"636","Ramakrishna et al. 2020","Jaccard","HSV1-infected; IVIG-injected","male",2,3,-0.0571821318892167,0.0314180045051795
+"637","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; ACV-injected","female",3,1,0.486600752687724,2.18296342367024
+"638","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; ACV-injected","male",2,1,0.488028064608008,2.25061592389804
+"639","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; ACV-injected","female",3,1,1.53452698412755,9.0408316440834
+"640","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; ACV-injected","male",2,1,1.48374334491442,17.2042938742439
+"641","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; ACV-injected","female",3,1,0.502128256827784,0.75834922597327
+"642","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; ACV-injected","male",2,1,0.113554036514622,0.425168689165427
+"643","Ramakrishna et al. 2020","Jaccard","HSV1-infected; ACV-injected","female",3,1,0.195593072365512,0.26312529392428
+"644","Ramakrishna et al. 2020","Jaccard","HSV1-infected; ACV-injected","male",2,1,0.029124395333674,0.192106972636619
+"645","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; ACV+IVIG-injected","female",3,3,-0.0278898600587668,0.0541443009152657
+"646","Ramakrishna et al. 2020","Unweighted Unifrac","HSV1-infected; ACV+IVIG-injected","male",2,2,0.0180137586750258,0.0539233938710169
+"647","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; ACV+IVIG-injected","female",3,3,-0.0843451630949935,1.48649170359045
+"648","Ramakrishna et al. 2020","Weighted Unifrac","HSV1-infected; ACV+IVIG-injected","male",2,2,0.311386143400086,8.29167082329045
+"649","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; ACV+IVIG-injected","female",3,3,0.340663362760304,0.198574507878359
+"650","Ramakrishna et al. 2020","Bray-Curtis","HSV1-infected; ACV+IVIG-injected","male",2,2,0.0793763322568233,0.078922674007794
+"651","Ramakrishna et al. 2020","Jaccard","HSV1-infected; ACV+IVIG-injected","female",3,3,0.190521755830336,0.0591197901740939
+"652","Ramakrishna et al. 2020","Jaccard","HSV1-infected; ACV+IVIG-injected","male",2,2,0.0450582963495446,0.0239589332549535
+"653","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","female",3,7,-0.367401963323834,0.0586288236271509
+"654","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","female",3,7,-0.213673299845416,0.0304010766847211
+"655","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","female",3,7,0.0193840572633898,0.292371189007213
+"656","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","female",3,7,0.0261519549626196,0.0209181851491698
+"657","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","male",2,7,0.352347204352412,0.00425519931457898
+"658","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","male",2,7,0.000130402109070967,0.00425519931457898
+"659","Kozik et al. 2019","Unweighted Unifrac","Colitis-cecal","male",2,7,-0.352137726559647,0.00425519931457898
+"660","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","female",3,7,-1.9910410939914,1.29154540505511
+"661","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","female",3,7,-2.01934787128481,0.416040305401985
+"662","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","female",3,7,-1.11498621802039,1.12155399425353
+"663","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","female",3,7,2.19664010036368,0.0264987212883062
+"664","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","male",2,7,0.493155856397065,0.00611177648223258
+"665","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","male",2,7,-1.43962107139013,0.00611177648223258
+"666","Kozik et al. 2019","Weighted Unifrac","Colitis-cecal","male",2,7,1.8512219714934,0.00611177648223258
+"667","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","female",3,7,0.03577667614018,0.0401172805650174
+"668","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","female",3,7,-0.0907332417588325,0.0221731321055404
+"669","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","female",3,7,0.173831765269059,0.34149543536657
+"670","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","female",3,7,0.938172542522402,0.25255299461637
+"671","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","male",2,7,0.597600742631557,0.0112042442238413
+"672","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","male",2,7,0.0186391624309751,0.0112042442238413
+"673","Kozik et al. 2019","Bray-Curtis","Colitis-cecal","male",2,7,0.183568070746225,0.0112042442238413
+"674","Kozik et al. 2019","Jaccard","Colitis-cecal","female",3,7,0.0624518473357106,0.0135751316539719
+"675","Kozik et al. 2019","Jaccard","Colitis-cecal","female",3,7,-0.0077261903005862,0.00769082560425059
+"676","Kozik et al. 2019","Jaccard","Colitis-cecal","female",3,7,0.18762927718692,0.167378860463747
+"677","Kozik et al. 2019","Jaccard","Colitis-cecal","female",3,7,0.671476670531291,0.141131569593057
+"678","Kozik et al. 2019","Jaccard","Colitis-cecal","male",2,7,0.461221191579195,0.00375109051927267
+"679","Kozik et al. 2019","Jaccard","Colitis-cecal","male",2,7,0.109284865916164,0.00375109051927267
+"680","Kozik et al. 2019","Jaccard","Colitis-cecal","male",2,7,0.20136402007546,0.00375109051927267
+"681","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","female",3,4,-0.136271998813603,0.192917236260572
+"682","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","female",3,4,0.0174566646648152,0.164689489318142
+"683","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","female",3,4,0.250514021773621,0.426659601640635
+"684","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","female",3,4,0.25728191947285,0.155206597782591
+"685","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","male",2,5,0.144008877708079,0.0129624945947851
+"686","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","male",2,5,-0.208207924535261,0.0129624945947851
+"687","Kozik et al. 2019","Unweighted Unifrac","Colitis-colonMucus","male",2,5,-0.560476053203979,0.0129624945947851
+"688","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","female",3,4,-2.46316475387546,1.40111685809518
+"689","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","female",3,4,-2.49147153116887,0.525611758442063
+"690","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","female",3,4,-1.58710987790444,1.23112544729361
+"691","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","female",3,4,1.72451644047963,0.136070174328384
+"692","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","male",2,5,0.45175771164904,0.0485729093669115
+"693","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","male",2,5,-1.48101921613815,0.0485729093669115
+"694","Kozik et al. 2019","Weighted Unifrac","Colitis-colonMucus","male",2,5,1.80982382674538,0.0485729093669115
+"695","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","female",3,4,0.0342433221711659,0.0659578009187701
+"696","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","female",3,4,-0.0922665957278467,0.0480136524592932
+"697","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","female",3,4,0.172298411300044,0.367335955720322
+"698","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","female",3,4,0.936639188553387,0.278393514970123
+"699","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","male",2,5,0.21684091883804,0.0497017259217272
+"700","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","male",2,5,-0.362120661362542,0.0497017259217272
+"701","Kozik et al. 2019","Bray-Curtis","Colitis-colonMucus","male",2,5,-0.197191753047292,0.0497017259217272
+"702","Kozik et al. 2019","Jaccard","Colitis-colonMucus","female",3,4,0.0344214485172016,0.0236185273376882
+"703","Kozik et al. 2019","Jaccard","Colitis-colonMucus","female",3,4,-0.0357565891190953,0.0177342212879669
+"704","Kozik et al. 2019","Jaccard","Colitis-colonMucus","female",3,4,0.159598878368411,0.177422256147463
+"705","Kozik et al. 2019","Jaccard","Colitis-colonMucus","female",3,4,0.643446271712782,0.151174965276774
+"706","Kozik et al. 2019","Jaccard","Colitis-colonMucus","male",2,5,0.188293450317623,0.0238067609872371
+"707","Kozik et al. 2019","Jaccard","Colitis-colonMucus","male",2,5,-0.163642875345408,0.0238067609872371
+"708","Kozik et al. 2019","Jaccard","Colitis-colonMucus","male",2,5,-0.0715637211861118,0.0238067609872371
+"709","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","female",3,7,-0.130686272468515,0.0524675047232307
+"710","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","female",3,7,0.0230423910099033,0.024239757780801
+"711","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","female",3,7,0.256099748118709,0.286209870103293
+"712","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","female",3,7,0.262867645817938,0.0147568662452496
+"713","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","male",2,7,0.879373827711681,0.0164062315708491
+"714","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","male",2,7,0.52715702546834,0.0164062315708491
+"715","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal_T0","male",2,7,0.174888896799623,0.0164062315708491
+"716","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","female",3,7,-3.14145931308005,1.34749406642103
+"717","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","female",3,7,-3.16976609037346,0.471988966767904
+"718","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","female",3,7,-2.26540443710903,1.17750265561945
+"719","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","female",3,7,1.04622188127503,0.0824473826542253
+"720","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","male",2,7,-0.283828991660156,0.0330168933597983
+"721","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","male",2,7,-2.21660591944735,0.0330168933597983
+"722","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal_T0","male",2,7,1.07423712343618,0.0330168933597983
+"723","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","female",3,7,-0.282964628105092,0.0421896923965702
+"724","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","female",3,7,-0.409474546004105,0.0242455439370933
+"725","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","female",3,7,-0.144909538976214,0.343567847198123
+"726","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","female",3,7,0.619431238277129,0.254625406447923
+"727","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","male",2,7,0.587125270821199,0.0439949858847525
+"728","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","male",2,7,0.0081636906206174,0.0439949858847525
+"729","Kozik et al. 2019","Bray-Curtis","Colitis-fecal_T0","male",2,7,0.173092598935868,0.0439949858847525
+"730","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","female",3,7,-0.126887438015181,0.0150881431446152
+"731","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","female",3,7,-0.197065475651478,0.00920383709489389
+"732","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","female",3,7,-0.00171000816397159,0.16889187195439
+"733","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","female",3,7,0.482137385180399,0.142644581083701
+"734","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","male",2,7,0.436628633195052,0.0171714820942012
+"735","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","male",2,7,0.0846923075320218,0.0171714820942012
+"736","Kozik et al. 2019","Jaccard","Colitis-fecal_T0","male",2,7,0.176771461691318,0.0171714820942012
+"737","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","female",3,7,-0.0975076407665852,0.0768409234307226
+"738","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","female",3,7,0.0562210227118332,0.0486131764882929
+"739","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","female",3,7,0.289278379820639,0.310583288810785
+"740","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","female",3,7,0.296046277519868,0.0391302849527415
+"741","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","male",2,5,0.946268946385789,0.00359221621263319
+"742","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","male",2,5,0.594052144142449,0.00359221621263319
+"743","Kozik et al. 2019","Unweighted Unifrac","Colitis-fecal","male",2,5,0.241784015473731,0.00359221621263319
+"744","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","female",3,7,-1.85546956834885,1.49950621854864
+"745","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","female",3,7,-1.88377634564226,0.624001118895519
+"746","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","female",3,7,-0.979414692377831,1.32951480774707
+"747","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","female",3,7,2.33221162600624,0.23445953478184
+"748","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","male",2,5,-0.102060890861149,0.0793451589662508
+"749","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","male",2,5,-2.03483781864834,0.0793451589662508
+"750","Kozik et al. 2019","Weighted Unifrac","Colitis-fecal","male",2,5,1.25600522423519,0.0793451589662508
+"751","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","female",3,7,-0.0226364683006691,0.0379554047725965
+"752","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","female",3,7,-0.149146386199682,0.0200112563131196
+"753","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","female",3,7,0.115418620828209,0.339333559574149
+"754","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","female",3,7,0.879759398081552,0.250391118823949
+"755","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","male",2,5,0.661826951919568,0.0267324556656225
+"756","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","male",2,5,0.0828653717189867,0.0267324556656225
+"757","Kozik et al. 2019","Bray-Curtis","Colitis-fecal","male",2,5,0.247794280034237,0.0267324556656225
+"758","Kozik et al. 2019","Jaccard","Colitis-fecal","female",3,7,0.0350473421622885,0.0123581809552396
+"759","Kozik et al. 2019","Jaccard","Colitis-fecal","female",3,7,-0.0351306954740083,0.00647387490551828
+"760","Kozik et al. 2019","Jaccard","Colitis-fecal","female",3,7,0.160224772013498,0.166161909765015
+"761","Kozik et al. 2019","Jaccard","Colitis-fecal","female",3,7,0.644072165357869,0.139914618894325
+"762","Kozik et al. 2019","Jaccard","Colitis-fecal","male",2,5,0.466122539891307,0.00838365214913728
+"763","Kozik et al. 2019","Jaccard","Colitis-fecal","male",2,5,0.114186214228276,0.00838365214913728
+"764","Kozik et al. 2019","Jaccard","Colitis-fecal","male",2,5,0.206265368387572,0.00838365214913728
+"765",NA,NA,NA,NA,NA,NA,NA,NA
+"766",NA,NA,NA,NA,NA,NA,NA,NA
+"767",NA,NA,NA,NA,NA,NA,NA,NA
+"768",NA,NA,NA,NA,NA,NA,NA,NA
+"769",NA,NA,NA,NA,NA,NA,NA,NA
+"770",NA,NA,NA,NA,NA,NA,NA,NA
+"771",NA,NA,NA,NA,NA,NA,NA,NA
+"772",NA,NA,NA,NA,NA,NA,NA,NA
+"773",NA,NA,NA,NA,NA,NA,NA,NA
+"774",NA,NA,NA,NA,NA,NA,NA,NA
+"775",NA,NA,NA,NA,NA,NA,NA,NA
+"776",NA,NA,NA,NA,NA,NA,NA,NA
+"777",NA,NA,NA,NA,NA,NA,NA,NA
+"778",NA,NA,NA,NA,NA,NA,NA,NA
+"779",NA,NA,NA,NA,NA,NA,NA,NA
+"780",NA,NA,NA,NA,NA,NA,NA,NA
+"781",NA,NA,NA,NA,NA,NA,NA,NA
+"782",NA,NA,NA,NA,NA,NA,NA,NA
+"783",NA,NA,NA,NA,NA,NA,NA,NA
+"784",NA,NA,NA,NA,NA,NA,NA,NA
+"785",NA,NA,NA,NA,NA,NA,NA,NA
+"786",NA,NA,NA,NA,NA,NA,NA,NA
+"787",NA,NA,NA,NA,NA,NA,NA,NA
+"788",NA,NA,NA,NA,NA,NA,NA,NA
+"789",NA,NA,NA,NA,NA,NA,NA,NA
+"790",NA,NA,NA,NA,NA,NA,NA,NA
+"791",NA,NA,NA,NA,NA,NA,NA,NA
+"792",NA,NA,NA,NA,NA,NA,NA,NA
+"793",NA,NA,NA,NA,NA,NA,NA,NA
+"794",NA,NA,NA,NA,NA,NA,NA,NA
+"795",NA,NA,NA,NA,NA,NA,NA,NA
+"796",NA,NA,NA,NA,NA,NA,NA,NA
+"797",NA,NA,NA,NA,NA,NA,NA,NA
+"798",NA,NA,NA,NA,NA,NA,NA,NA
+"799",NA,NA,NA,NA,NA,NA,NA,NA
+"800",NA,NA,NA,NA,NA,NA,NA,NA
+"801",NA,NA,NA,NA,NA,NA,NA,NA
+"802",NA,NA,NA,NA,NA,NA,NA,NA
+"803",NA,NA,NA,NA,NA,NA,NA,NA
+"804",NA,NA,NA,NA,NA,NA,NA,NA
+"805",NA,NA,NA,NA,NA,NA,NA,NA
+"806",NA,NA,NA,NA,NA,NA,NA,NA
+"807",NA,NA,NA,NA,NA,NA,NA,NA
+"808",NA,NA,NA,NA,NA,NA,NA,NA
+"809",NA,NA,NA,NA,NA,NA,NA,NA
+"810",NA,NA,NA,NA,NA,NA,NA,NA
+"811",NA,NA,NA,NA,NA,NA,NA,NA
+"812",NA,NA,NA,NA,NA,NA,NA,NA
+"813",NA,NA,NA,NA,NA,NA,NA,NA
+"814",NA,NA,NA,NA,NA,NA,NA,NA
+"815",NA,NA,NA,NA,NA,NA,NA,NA
+"816",NA,NA,NA,NA,NA,NA,NA,NA
+"817",NA,NA,NA,NA,NA,NA,NA,NA
+"818",NA,NA,NA,NA,NA,NA,NA,NA
+"819",NA,NA,NA,NA,NA,NA,NA,NA
+"820",NA,NA,NA,NA,NA,NA,NA,NA
+"821",NA,NA,NA,NA,NA,NA,NA,NA
+"822",NA,NA,NA,NA,NA,NA,NA,NA
+"823",NA,NA,NA,NA,NA,NA,NA,NA
+"824",NA,NA,NA,NA,NA,NA,NA,NA
+"825",NA,NA,NA,NA,NA,NA,NA,NA
+"826",NA,NA,NA,NA,NA,NA,NA,NA
+"827",NA,NA,NA,NA,NA,NA,NA,NA
+"828",NA,NA,NA,NA,NA,NA,NA,NA
+"829",NA,NA,NA,NA,NA,NA,NA,NA
+"830",NA,NA,NA,NA,NA,NA,NA,NA
+"831",NA,NA,NA,NA,NA,NA,NA,NA
+"832",NA,NA,NA,NA,NA,NA,NA,NA
+"833",NA,NA,NA,NA,NA,NA,NA,NA
+"834",NA,NA,NA,NA,NA,NA,NA,NA
+"835",NA,NA,NA,NA,NA,NA,NA,NA
+"836",NA,NA,NA,NA,NA,NA,NA,NA
+"837",NA,NA,NA,NA,NA,NA,NA,NA
+"838",NA,NA,NA,NA,NA,NA,NA,NA
+"839",NA,NA,NA,NA,NA,NA,NA,NA
+"840",NA,NA,NA,NA,NA,NA,NA,NA
+"841",NA,NA,NA,NA,NA,NA,NA,NA
+"842",NA,NA,NA,NA,NA,NA,NA,NA
+"843",NA,NA,NA,NA,NA,NA,NA,NA
+"844",NA,NA,NA,NA,NA,NA,NA,NA
+"845",NA,NA,NA,NA,NA,NA,NA,NA
+"846",NA,NA,NA,NA,NA,NA,NA,NA
+"847",NA,NA,NA,NA,NA,NA,NA,NA
+"848",NA,NA,NA,NA,NA,NA,NA,NA
+"849",NA,NA,NA,NA,NA,NA,NA,NA
+"850",NA,NA,NA,NA,NA,NA,NA,NA
+"851",NA,NA,NA,NA,NA,NA,NA,NA
+"852",NA,NA,NA,NA,NA,NA,NA,NA
+"853",NA,NA,NA,NA,NA,NA,NA,NA
+"854",NA,NA,NA,NA,NA,NA,NA,NA
+"855",NA,NA,NA,NA,NA,NA,NA,NA
+"856",NA,NA,NA,NA,NA,NA,NA,NA
+"857",NA,NA,NA,NA,NA,NA,NA,NA
+"858",NA,NA,NA,NA,NA,NA,NA,NA
+"859",NA,NA,NA,NA,NA,NA,NA,NA
+"860",NA,NA,NA,NA,NA,NA,NA,NA
+"861",NA,NA,NA,NA,NA,NA,NA,NA
+"862",NA,NA,NA,NA,NA,NA,NA,NA
+"863",NA,NA,NA,NA,NA,NA,NA,NA
+"864",NA,NA,NA,NA,NA,NA,NA,NA
+"865",NA,NA,NA,NA,NA,NA,NA,NA
+"866",NA,NA,NA,NA,NA,NA,NA,NA
+"867",NA,NA,NA,NA,NA,NA,NA,NA
+"868",NA,NA,NA,NA,NA,NA,NA,NA
+"869",NA,NA,NA,NA,NA,NA,NA,NA
+"870",NA,NA,NA,NA,NA,NA,NA,NA
+"871",NA,NA,NA,NA,NA,NA,NA,NA
+"872",NA,NA,NA,NA,NA,NA,NA,NA
+"873",NA,NA,NA,NA,NA,NA,NA,NA
+"874",NA,NA,NA,NA,NA,NA,NA,NA
+"875",NA,NA,NA,NA,NA,NA,NA,NA
+"876",NA,NA,NA,NA,NA,NA,NA,NA
+"877",NA,NA,NA,NA,NA,NA,NA,NA
+"878",NA,NA,NA,NA,NA,NA,NA,NA
+"879",NA,NA,NA,NA,NA,NA,NA,NA
+"880",NA,NA,NA,NA,NA,NA,NA,NA
+"881",NA,NA,NA,NA,NA,NA,NA,NA
+"882",NA,NA,NA,NA,NA,NA,NA,NA
+"883",NA,NA,NA,NA,NA,NA,NA,NA
+"884",NA,NA,NA,NA,NA,NA,NA,NA
+"885",NA,NA,NA,NA,NA,NA,NA,NA
+"886",NA,NA,NA,NA,NA,NA,NA,NA
+"887",NA,NA,NA,NA,NA,NA,NA,NA
+"888",NA,NA,NA,NA,NA,NA,NA,NA
+"889",NA,NA,NA,NA,NA,NA,NA,NA
+"890",NA,NA,NA,NA,NA,NA,NA,NA
+"891",NA,NA,NA,NA,NA,NA,NA,NA
+"892",NA,NA,NA,NA,NA,NA,NA,NA
