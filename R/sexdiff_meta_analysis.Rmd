@@ -86,12 +86,15 @@ dat33 #3140 samples: 2887 samples+12+241
 # dat33 #3140 samples
 ```
 
-```{r studyID}
+```{r study ID}
+
 study_ls <- unique(sample_data(dat33)$Authors) #23 studies
 study_ls
+
 ```
 
 ```{r study1 Ellis et al. 2021}
+
 study <- "Ellis et al. 2021"
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
@@ -189,6 +192,7 @@ sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
+
 ```{r study14 Tam et al. 2020}
 study <- study_ls[14] #"Smoke exposed, ovariectomy" and "ovariectomy" only females 
 study 
@@ -196,6 +200,7 @@ sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
+
 ```{r study15 Ramakrishna et al. 2020 resolved: error rasised for PD calculation}
 study <- study_ls[15] 
 study #"Ramakrishna et al. 2020", raremin<9 cause error
@@ -211,6 +216,7 @@ sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
 ```
+
 ```{r study17 Ibrahim et al. 2019}
 study <- study_ls[17] 
 study 
@@ -241,7 +247,9 @@ study
 sub <- subset_samples(dat33, Authors == study)
 sample_data_df <- data.frame(sample_data(sub))
 sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+
 ```
+
 ```{r study21 Tashiro et al. 2020}
 study <- study_ls[21] 
 study 
@@ -456,13 +464,13 @@ fit_he <- rma.mv(yi, vi,
                                 ~ metric | obs), 
                   struct = "DIAG",
                   mod = ~metric -1,
-                  data = alpha_es[alpha_es$stats == "lnRR",], 
+                  data = alpha_es[alpha_es$stats == "lnVR",], 
                   test = "t", 
                   method = "REML",
                   sparse = TRUE) #add to make it faster
 
 orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnVR")
 
 ###homoscedastic model
 fit_ho <- rma.mv(yi, vi, 
@@ -482,6 +490,49 @@ anova(fit_ho, fit_he)
 
 ```
 
+
+```{r meta-meta model Alpha-div ES visualized using orchaRd stratefying by treatment and control}
+###heteroscedastic model
+alpha_es$obs <- 1:nrow(alpha_es)
+
+alpha_es <- alpha_es %>% 
+  mutate(group_general = case_when(
+    grepl("control", subgroup, ignore.case = TRUE) ~ "control",
+    subgroup == "Water-T0" ~ "control",
+    Authors == "Velasco et al. 2021" & subgroup == "C57BL/6J" ~ "control",
+    TRUE ~ "treatment"
+  ))
+
+fit_he <- rma.mv(yi, vi, 
+                  random = list(~ 1 | Authors/subgroup, 
+                                ~ metric | obs), 
+                  struct = "DIAG",
+                  mod = ~metric + group_general + metric:group_general -1,
+                  data = alpha_es[alpha_es$stats == "lnVR",], 
+                  test = "t", 
+                  method = "REML",
+                  sparse = TRUE) #add to make it faster
+summary(fit_he)
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors", by="group_general")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnVR", by="group_general")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, 
+                  random = list(~ 1 | Authors/subgroup, 
+                                ~1 | obs), 
+                  mod = ~metric + group_general + metric:group_general -1,
+                  data = alpha_es[alpha_es$stats == "lnRR",], 
+                  test = "t", 
+                  method = "REML",
+                  sparse = TRUE) 
+
+summary(fit_ho)
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors", by="group_general")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR", by="group_general")
+
+anova(fit_ho, fit_he) 
+
+```
 
 
 ```{r Alpha-div ES visualization}
@@ -638,6 +689,41 @@ anova(fit_ho, fit_he)
 
 ```
 
+```{r Beta dispersion meta-meta model with "Treatment" as moderator}
+###heteroscedastic model
+beta_es$obs <- 1:nrow(beta_es)
+fit_he <- rma.mv(yi, vi, 
+                  random = list(~ 1 | Authors/subgroup, 
+                                ~ metric | obs), 
+                  struct = "DIAG",
+                  mod = ~metric + control + metric:control -1,
+                  data = beta_es, 
+                  test = "t", 
+                  method = "REML",
+                  sparse = TRUE) #add to make it faster
+
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors", by="control")
+orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
+
+###homoscedastic model
+fit_ho <- rma.mv(yi, vi, 
+                  random = list(~ 1 | Authors/subgroup, 
+                                ~1 | obs), 
+                  mod = ~metric + control + metric:control -1,
+                  data = beta_es, 
+                  test = "t", 
+                  method = "REML",
+                  sparse = TRUE) 
+
+summary(fit_ho)
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors", by="control")
+orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
+
+anova(fit_ho, fit_he) 
+
+```
+
+
 ```{r beta dispersion ES visualization}
 
 # color_pal2 <- c("#377EB8", "#FF7F00", "#4DAF4A", "#984EA3")
@@ -714,26 +800,26 @@ p1 <- orchaRd::orchard_plot(mod_ho, mod = "group_general", group = "Authors", xl
 ```
 
 ```{r beta dispersion ES stratefy treatment groups}
-##read revised beta_es table -- mannualy revised to add subgroups
-beta_es <- read.csv(here("data", "beta_es_lnRR_new.csv"), header=1)
-
-beta_es$group_general[beta_es$group_general == "drug treatment "] <- "drug treatment"
-beta_es$genotype_intervention <- ifelse(grepl("genotype", beta_es$group_general), "yes", "no")
-beta_es$hormonal_intervention <- ifelse(grepl("hormonal", beta_es$group_general), "yes", "no")
-beta_es$colitis_intervention <- ifelse(grepl("colitis", beta_es$group_general), "yes", "no")
-beta_es$dietary_intervention <- ifelse(grepl("dietary", beta_es$group_general), "yes", "no")
-beta_es$control <- ifelse(grepl("control", beta_es$group_general), "control", "treatment")
-
-mod_ho <- rma.mv(yi, vi, 
-                 random = list(~ 1 | Authors, ~1 | obs), 
-                 mod = ~control -1,
-                 data = beta_es[beta_es$metric == "Weighted Unifrac",], 
-                 test = "t", 
-                 method = "REML",
-                 sparse = TRUE)
-#orchaRd::mod_results(mod_ho, mod="1", group = "Authors")
-orchaRd::mod_results(mod_ho, mod="control", group = "Authors")
-p1 <- orchaRd::orchard_plot(mod_ho, mod = "control", group = "Authors")
+# ##read revised beta_es table -- mannualy revised to add subgroups
+# beta_es <- read.csv(here("data", "beta_es_lnRR_new.csv"), header=1)
+# 
+# beta_es$group_general[beta_es$group_general == "drug treatment "] <- "drug treatment"
+# beta_es$genotype_intervention <- ifelse(grepl("genotype", beta_es$group_general), "yes", "no")
+# beta_es$hormonal_intervention <- ifelse(grepl("hormonal", beta_es$group_general), "yes", "no")
+# beta_es$colitis_intervention <- ifelse(grepl("colitis", beta_es$group_general), "yes", "no")
+# beta_es$dietary_intervention <- ifelse(grepl("dietary", beta_es$group_general), "yes", "no")
+# beta_es$control <- ifelse(grepl("control", beta_es$group_general), "control", "treatment")
+# 
+# mod_ho <- rma.mv(yi, vi, 
+#                  random = list(~ 1 | Authors, ~1 | obs), 
+#                  mod = ~control -1,
+#                  data = beta_es[beta_es$metric == "Weighted Unifrac",], 
+#                  test = "t", 
+#                  method = "REML",
+#                  sparse = TRUE)
+# #orchaRd::mod_results(mod_ho, mod="1", group = "Authors")
+# orchaRd::mod_results(mod_ho, mod="control", group = "Authors")
+# p1 <- orchaRd::orchard_plot(mod_ho, mod = "control", group = "Authors")
 
 ```
 
@@ -804,29 +890,41 @@ write.csv(alpha_es_treat, here("results","alpha_es_treatment_control.csv"))
 ###heteroscedastic model
 alpha_es_treat <- alpha_es_treat %>% filter(!if_all(everything(), is.na))
 alpha_es_treat$obs <- 1:nrow(alpha_es_treat)
-V <- vcalc(vi, cluster=Authors, obs=obs, data = alpha_es_treat[alpha_es_treat$stats == "lnRR" & alpha_es_treat$Sex == "female",], rho=0.5) #model independence among multiple effect sizes from the same study -- they share the same control group
+V <- vcalc(vi, cluster=Authors, obs=obs, data = alpha_es_treat[alpha_es_treat$stats == "lnVR",], rho=0.5) #model independence among multiple effect sizes from the same study -- they share the same control group
 
                  
 fit_he <- rma.mv(yi, V, 
                   random = list(~ 1 | Authors/subgroup, 
                                 ~ metric | obs), 
                   struct = "DIAG",
-                  mod = ~metric -1,
-                  data = alpha_es_treat[alpha_es_treat$stats == "lnRR" & alpha_es_treat$Sex == "female",], 
+                  mod = ~Sex + metric + Sex:metric - 1,
+                  data = alpha_es_treat[alpha_es_treat$stats == "lnVR",], 
                   test = "t", 
                   method = "REML",
                   sparse = TRUE) #add to make it faster
-
+summary(fit_he)
 #plot(fitted(fit_he), residuals(fit_he))
-orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors", by="Sex")
+p1 <-orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", by="Sex", xlab = "lnVR")
+
+# fit_he2 <- rma.mv(yi, V, 
+#                   random = list(~ 1 | Authors/subgroup, 
+#                                 ~ metric | obs), 
+#                   struct = "DIAG",
+#                   mod = ~metric + Sex + metric:Sex - 1, ##test on different order of moderators, result stays the same 
+#                   data = alpha_es_treat[alpha_es_treat$stats == "lnCVR",], 
+#                   test = "t", 
+#                   method = "REML",
+#                   sparse = TRUE) #add to make it faster
+# summary(fit_he2)
+
 
 ###homoscedastic model
 fit_ho <- rma.mv(yi, V, 
                   random = list(~ 1 | Authors/subgroup, 
                                 ~1 | obs), 
-                  mod = ~metric -1,
-                  data = alpha_es_treat[alpha_es_treat$stats == "lnRR" & alpha_es_treat$Sex == "female",], 
+                  mod = ~Sex + metric + Sex:metric -1,
+                  data = alpha_es_treat[alpha_es_treat$stats == "lnRR",], 
                   test = "t", 
                   method = "REML",
                   sparse = TRUE) 
@@ -836,8 +934,7 @@ summary(fit_ho)
 #plot(fitted(fit_ho), residuals(fit_ho))
 
 
-#orchaRd::mod_results(fit_ho, mod="1", group = "Authors")
-orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors", by="Sex")
 
 #p1 <- orchaRd::orchard_plot(fit_ho, mod = "1", group = "Authors", xlab = "lnRR")
 orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
@@ -847,7 +944,7 @@ anova(fit_ho, fit_he)
 ```
 
 
-```{r beta dispersion ES calculation for treatment vs. control within sex}
+```{r beta dispersion ES calculation for treatment vs. control by sex}
 ###beta-dispersion
 head(tb_all)
 tb_all_long <- tb_all %>%
@@ -913,39 +1010,39 @@ write.csv(beta_es_treat, here("results", "beta_es_lnRR_treatment.csv"))
 ```
 
 
-```{r Beta dispersion meta-meta model and ES visualized using orchaRd treatment vs. control}
+```{r Beta dispersion meta-meta model and ES visualized using orchaRd treatment vs. control by sex}
 ###heteroscedastic model
 beta_es_treat <- beta_es_treat %>% filter(!if_all(everything(), is.na))
 beta_es_treat$obs <- 1:nrow(beta_es_treat)
 
-V <- vcalc(vi, cluster=Authors, obs=obs, data = beta_es_treat[beta_es_treat$Sex == "male",], rho=0.5) #model independence among multiple effect sizes from the same study -- they share the same control group
+V <- vcalc(vi, cluster=Authors, obs=obs, data = beta_es_treat, rho=0.5) #model independence among multiple effect sizes from the same study -- they share the same control group
 
 fit_he <- rma.mv(yi, V, 
                   random = list(~ 1 | Authors/subgroup, 
                                 ~ metric | obs), 
                   struct = "DIAG",
-                  mod = ~metric -1,
-                  data = beta_es_treat[beta_es_treat$Sex == "male",], 
+                  mod = ~Sex + metric + Sex:metric -1,
+                  data = beta_es_treat, 
                   test = "t", 
                   method = "REML",
                   sparse = TRUE) #add to make it faster
-
-orchaRd::mod_results(fit_he, mod="metric", group = "Authors")
-p1 <- orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", xlab = "lnRR")
+summary(fit_he)
+orchaRd::mod_results(fit_he, mod="metric", group = "Authors", by="Sex")
+p1 <- orchaRd::orchard_plot(fit_he, mod = "metric", group = "Authors", by="Sex", xlab = "lnRR")
 
 ###homoscedastic model
 fit_ho <- rma.mv(yi, V, 
                   random = list(~ 1 | Authors/subgroup, 
                                 ~1 | obs), 
-                  mod = ~metric -1,
-                  data = beta_es_treat[beta_es_treat$Sex == "male",], 
+                  mod = ~Sex + metric + Sex:metric -1,
+                  data = beta_es_treat, 
                   test = "t", 
                   method = "REML",
                   sparse = TRUE) 
 
 summary(fit_ho)
-orchaRd::mod_results(fit_ho, mod="metric", group = "Authors")
-p1 <- orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR")
+orchaRd::mod_results(fit_ho, mod="metric", group = "Authors", by="Sex")
+p1 <- orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "lnRR", by="Sex")
 
 anova(fit_ho, fit_he) 
 

@@ -1,0 +1,263 @@
+---
+title: "sexdiff_differential_species_analysis"
+author: "Judy (Jingdi) Li"
+date: "2025-07-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load packages, cache=FALSE}
+devtools::install_github("daniel1noble/orchaRd", ref = "main", force = TRUE)
+pacman::p_load(phyloseq,
+               tidyr,
+               qiime2R,
+               vegan,
+               ggplot2,
+               picante,
+               dplyr,
+               tibble,
+               tidyverse,
+               ggpubr,
+               rstatix,
+               reshape2,
+               here,
+               devtools,
+               cli, 
+               ALDEx2,
+               AMCOMBC,
+               microbiome
+               
+               
+)
+
+```
+
+
+```{r custom functions}
+source(here("custom_func", "toolbox.R"))
+```
+
+
+```{r load files in object, this object contains all the required files, alternatively can load individual files below}
+######load the object#####
+load(here("data", "newest_SRS.RData"))
+
+######save the object######
+#save.image(here("data", "newest_SRS.RData")) 
+
+```
+
+
+```{r}
+####load data, skip if already load the above object
+assign("dat33", qza_to_phyloseq(features = here("data","table_filt_decomtam33_V4.qza"), 
+                                tree = here("data","asvs-tree_V4.qza"), 
+                                taxonomy = here("data","classification.qza"), 
+                                metadata = here("data","metadata_dat33.txt")))
+dat33 #3140 samples: 2887 samples+12+241
+```
+
+```{r study ID}
+
+study_ls <- unique(sample_data(dat33)$Authors) #23 studies
+study_ls
+
+```
+
+```{r study}
+
+study <- "Ellis et al. 2021" #group by sample_name
+#study <- "Lindheim et al. 2018" ##no treatment info in metadata, compare sex directly remove for this analysis
+study <- "Pizarro et al. 2021" #experimental_treatment_raw
+study <- "Lyte et al. 2022" #host_diet
+study <- "Zou et al. 2021" #experimental_treatment_raw
+study <- "Song et al. 2021" #experimental_treatment_raw
+study <- "Velasco et al. 2021" #strain
+#study <- "Li et al. 2020" ##sample size not enough
+study <- "Son et al. 2019" #experimental_treatment_raw
+study <- "Cheema & Pluznick 2019" #experimental_treatment
+study <- "Zajac et al. 2022" #experimental_treatment_raw, no control group
+study <- "Sun et al. 2020" #experimental_treatment_raw
+study <- "Kozik et al. 2019" #experimental_treatment_raw, control and treatment in pairs
+study <- "Tam et al. 2020" #experimental_treatment_raw
+study <- "Ramakrishna et al. 2020" #experimental_treatment
+study <- "Song et al. 2020" #experimental_treatment_raw
+study <- "Ibrahim et al. 2019" #experimental_treatment_raw, control and treatment in pairs
+study <- "Strickland et al. 2021" #only has control, independent samples, experimental_treatment
+study <- "Weng et al. 2019" #only has treatment, experimental_treatment_raw, in pairs
+study <- "Wolfe et al. 2020" #has healthy, experimental_treatment_raw, in pairs
+study <- "Tashiro et al. 2020" #experimental_treatment_raw
+study <- "Song et al. 2022" #experimental_treatment
+study <- "Gubert et al. 2022" #experimental_treatment_raw, in pairs
+
+sub <- subset_samples(dat33, Authors == study)
+sub <- subset_samples(sub, !(tissue %in% c("skin", "nose", "ear")))
+
+
+sample_data_df <- data.frame(sample_data(sub))
+sample_data_df %>% group_by(experimental_treatment_raw, host_sex) %>% summarise(n = n())
+sample_data_df <- 
+  sample_data_df %>% 
+  mutate(group_general = case_when(
+#    grepl("healthy", experimental_treatment_raw, ignore.case = TRUE) ~ "control",
+#    grepl("Control", experimental_treatment, ignore.case = TRUE) ~ "control",
+#    grepl("control", experimental_treatment, ignore.case = TRUE) ~ "control",
+    experimental_treatment_raw == "Water-T0" ~ "control",
+    Authors == "Velasco et al. 2021" & strain == "C57BL/6J" ~ "control",
+    TRUE ~ experimental_treatment_raw
+  ))
+sample_data_df$group_general
+sample_data(sub) <- sample_data(sample_data_df)
+group_list <- unique(sample_data_df$group_general) 
+group_list
+
+
+```
+
+
+```{r }
+##using Aldex2
+#where each row is a different feature and each column represents a sample.
+set.seed(520)
+#res.all <- data.frame(matrix(ncol = 22, nrow = 0))
+#colnames(res.all) <- colnames(res.taxa)
+#res.all <- read.csv(here("results","res.all.combined.csv"), header=1, row.names=1)
+for (group in group_list) {
+  tb <- subset_samples(sub, group_general == group)
+  sample_df <- data.frame(sample_data(tb))
+  if (length(unique(sample_df$host_sex)) > 1 & nrow(sample_df[sample_df$host_sex=="male",])>1 
+      & nrow(sample_df[sample_df$host_sex=="female",])>1)  {
+  d.x <- aldex.clr(otu_table(tb), conds = sample_data(tb)$host_sex, mc.samples = 128)
+  d.eff <- aldex.effect(d.x) 
+  d.tt <- aldex.ttest(d.x)
+  res <- data.frame(d.eff,d.tt)
+  res.taxa <- merge(tax_table(tb), res, by = "row.names") %>% mutate(Group = group, Study = study)
+  res.taxa <- res.taxa %>% dplyr::mutate(
+                direct = case_when(
+                  effect > 0 ~ "Positive",
+                  effect <= 0 ~ "Negative",
+                  TRUE ~ "NA"
+                  )) 
+  res.all <- rbind(res.taxa, res.all)
+  res.all.sig <- res.all %>% filter(wi.eBH < 0.05)
+  }
+  else {
+  message("Only one level in host_sex — skipping analysis.")
+ }
+  }
+
+
+write.csv(res.all, here("results","res.all.combined.csv"))
+write.csv(res.all.sig, here("results","res.all.combined.sig.csv"))
+
+
+
+####ancom, ASV level 
+#ancom.all2 <- data.frame(matrix(ncol = 18, nrow = 0))
+#colnames(ancom.all2) <- colnames(df_w_taxa)
+for (group in group_list) {
+  tb <- subset_samples(sub, group_general == group)
+  sample_df <- data.frame(sample_data(tb))
+  if (length(unique(sample_df$host_sex)) > 1 & nrow(sample_df[sample_df$host_sex=="male",])>1 
+      & nrow(sample_df[sample_df$host_sex=="female",])>1)  {
+rel_abun <- transform_sample_counts(tb, function(x) x/sum(x))
+remove_low_abun <- filter_taxa(rel_abun, function(x) max(x) > 0.001, TRUE) #remove low-abundant taxa
+GPf = filter_taxa(remove_low_abun, function(x) var(x) > 1e-06, TRUE)
+tb <- GPf
+out <- ancom(data=tb, meta_data = sample_df, p_adj_method = "BH", prv_cut = 0.10, lib_cut = min(sample_sums(tb)), main_var = "host_sex", alpha = 0.05, n_cl = 1)
+res <- out$res
+q_val <- out$q_data #adjusted p-val
+beta_val <- out$beta_data # effect sizes
+beta_val <- beta_val * (q_val < 0.05) # filter effect sizes where q_val < 0.05
+beta_pos <- apply(abs(beta_val), 2, which.max) # choose the max beta as the effect size
+beta_max <- vapply(seq_along(beta_pos), function(i)
+  beta_val[beta_pos[i], i], FUN.VALUE = double(1))
+n_taxa = ifelse(is.null(out$zero_ind), 
+                nrow(otu_table(tb)), 
+                sum(apply(out$zero_ind[, -1], 1, sum) == 0)) #filter taxa which is zero across all samples
+cut_off <- 0.7 * (n_taxa-1)
+df_w = res %>%
+  dplyr::mutate(beta = beta_max,
+                direct = case_when(
+                  detected_0.7 == TRUE & beta > 0 ~ "Positive",
+                  detected_0.7 == TRUE & beta <= 0 ~ "Negative",
+                  TRUE ~ "Not Significant"
+                  )) %>% dplyr::arrange(W)
+row.names(df_w) <- df_w$taxon
+df_w_taxa <- merge(tax_table(tb), df_w, by = "row.names") %>% mutate(group = group, Study = study)
+#df_w$taxon = factor(df_w$taxon, levels = df_w$taxon)
+df_w_taxa$W = replace(df_w_taxa$W, is.infinite(df_w_taxa$W), n_taxa - 1)
+df_w_taxa$direct = factor(df_w_taxa$direct, 
+                         levels = c("Negative", "Positive", "Not Significant"))
+ancom.all2 <- rbind(df_w_taxa, ancom.all2)
+ancom.all.sig2 <- ancom.all2 %>% filter(direct %in% c("Positive", "Negative"))
+  }
+  else {
+  message("Only one level in host_sex — skipping analysis.")
+ }
+  }
+ 
+
+write.csv(ancom.all2, here("results","ancom.all.combined_sex.csv"))
+write.csv(ancom.all.sig2, here("results","ancom.all.combined.sig_sex.csv"))
+
+```
+
+
+
+```{r combine aldex and ancom results}
+head(res.all.sig)
+head(ancom.all.sig2)
+
+res.all.sig$id <- paste(res.all.sig$Group, res.all.sig$Study, res.all.sig$direct, sep = "_")
+ancom.all.sig2$id <- paste(ancom.all.sig2$group, ancom.all.sig2$Study, ancom.all.sig2$direct, sep = "_")
+
+# Find common identifiers
+common_ids <- intersect(res.all.sig$id, ancom.all.sig2$id)
+
+# Find row names of A and B that have these common combinations
+matching_rows_A <- res.all.sig[res.all.sig$id %in% common_ids,]$Row.names
+matching_rows_B <- ancom.all.sig2[ancom.all.sig2$id %in% common_ids,]$Row.names
+
+# Optionally, remove the helper column
+#glm.all.sig$id <- NULL
+#ancom.all.sig$id <- NULL
+overlap <- intersect(matching_rows_A, matching_rows_B)
+both.sig2 <- res.all.sig[res.all.sig$Row.names %in% overlap,]
+both.sig2[duplicated(both.sig2$Row.names) | duplicated(both.sig2$Row.names, fromLast = TRUE), ]
+
+
+write.csv(both.sig2, here("results","both.sig_sex.csv"))
+
+
+```
+
+
+```{r group taxa to higher level}
+both.sig2 <- read.csv(here("results","both.sig_sex.csv"), header=1, row.names=1)
+head(both.sig2)
+p1 <- both.sig2 %>%
+  mutate(enriched=ifelse(direct=="Positive", "male-enriched", "female-enriched")) %>%
+  filter(!is.na(Genus)) %>%
+  filter(!Genus == "uncultured") %>%
+  ggplot(aes(y=Genus, x=effect, color=enriched)) +
+  geom_point(alpha=0.5) +
+  theme_bw(base_size = 20) +
+  facet_grid(~Treatment) +
+  theme(legend.position = "right")
+
+```
+
+
+
+
+
+
+
+
+
+
