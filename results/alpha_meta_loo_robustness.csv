@@ -1,0 +1,73 @@
+"stats","term","robustness","n_studies"
+"lnCVR","Chao1","Stable",23
+"lnCVR","Chao1","Sig. change only",0
+"lnCVR","Chao1","Direction flip only",0
+"lnCVR","Chao1","Flip + sig. change",0
+"lnCVR","Evenness","Stable",23
+"lnCVR","Evenness","Sig. change only",0
+"lnCVR","Evenness","Direction flip only",0
+"lnCVR","Evenness","Flip + sig. change",0
+"lnCVR","Faith's PD","Stable",17
+"lnCVR","Faith's PD","Sig. change only",6
+"lnCVR","Faith's PD","Direction flip only",0
+"lnCVR","Faith's PD","Flip + sig. change",0
+"lnCVR","Richness","Stable",13
+"lnCVR","Richness","Sig. change only",10
+"lnCVR","Richness","Direction flip only",0
+"lnCVR","Richness","Flip + sig. change",0
+"lnCVR","Shannon","Stable",23
+"lnCVR","Shannon","Sig. change only",0
+"lnCVR","Shannon","Direction flip only",0
+"lnCVR","Shannon","Flip + sig. change",0
+"lnCVR","Simpson","Stable",20
+"lnCVR","Simpson","Sig. change only",3
+"lnCVR","Simpson","Direction flip only",0
+"lnCVR","Simpson","Flip + sig. change",0
+"lnRR","Chao1","Stable",15
+"lnRR","Chao1","Sig. change only",8
+"lnRR","Chao1","Direction flip only",0
+"lnRR","Chao1","Flip + sig. change",0
+"lnRR","Evenness","Stable",23
+"lnRR","Evenness","Sig. change only",0
+"lnRR","Evenness","Direction flip only",0
+"lnRR","Evenness","Flip + sig. change",0
+"lnRR","Faith's PD","Stable",22
+"lnRR","Faith's PD","Sig. change only",1
+"lnRR","Faith's PD","Direction flip only",0
+"lnRR","Faith's PD","Flip + sig. change",0
+"lnRR","Richness","Stable",12
+"lnRR","Richness","Sig. change only",11
+"lnRR","Richness","Direction flip only",0
+"lnRR","Richness","Flip + sig. change",0
+"lnRR","Shannon","Stable",22
+"lnRR","Shannon","Sig. change only",1
+"lnRR","Shannon","Direction flip only",0
+"lnRR","Shannon","Flip + sig. change",0
+"lnRR","Simpson","Stable",23
+"lnRR","Simpson","Sig. change only",0
+"lnRR","Simpson","Direction flip only",0
+"lnRR","Simpson","Flip + sig. change",0
+"lnVR","Chao1","Stable",23
+"lnVR","Chao1","Sig. change only",0
+"lnVR","Chao1","Direction flip only",0
+"lnVR","Chao1","Flip + sig. change",0
+"lnVR","Evenness","Stable",22
+"lnVR","Evenness","Sig. change only",0
+"lnVR","Evenness","Direction flip only",1
+"lnVR","Evenness","Flip + sig. change",0
+"lnVR","Faith's PD","Stable",15
+"lnVR","Faith's PD","Sig. change only",8
+"lnVR","Faith's PD","Direction flip only",0
+"lnVR","Faith's PD","Flip + sig. change",0
+"lnVR","Richness","Stable",15
+"lnVR","Richness","Sig. change only",8
+"lnVR","Richness","Direction flip only",0
+"lnVR","Richness","Flip + sig. change",0
+"lnVR","Shannon","Stable",23
+"lnVR","Shannon","Sig. change only",0
+"lnVR","Shannon","Direction flip only",0
+"lnVR","Shannon","Flip + sig. change",0
+"lnVR","Simpson","Stable",19
+"lnVR","Simpson","Sig. change only",4
+"lnVR","Simpson","Direction flip only",0
+"lnVR","Simpson","Flip + sig. change",0

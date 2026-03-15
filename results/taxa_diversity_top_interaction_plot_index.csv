@@ -1,0 +1,5 @@
+"top_n_taxa","interaction_type","plot_file"
+25,"Sex interaction","results/taxa_diversity_top_interaction_alpha_top25_sex.png"
+25,"Treatment interaction","results/taxa_diversity_top_interaction_alpha_top25_treatment.png"
+100,"Sex interaction","results/taxa_diversity_top_interaction_alpha_top100_sex.png"
+100,"Treatment interaction","results/taxa_diversity_top_interaction_alpha_top100_treatment.png"

@@ -1,0 +1,5 @@
+"domain","stats","term","plot_file"
+"alpha","lnCVR","all_terms","results/meta_leave_one_out_influence_alpha_lncvr.png"
+"alpha","lnRR","all_terms","results/meta_leave_one_out_influence_alpha_lnrr.png"
+"alpha","lnVR","all_terms","results/meta_leave_one_out_influence_alpha_lnvr.png"
+"beta","lnRR","all_terms","results/meta_leave_one_out_influence_beta_lnrr.png"

@@ -1,0 +1,1919 @@
+---
+title: "Sex-Difference Microbiome: Unified Pipeline"
+author: "Judy (Jingdi) Li"
+date: "2026-03-14"
+output: html_document
+---
+
+## 1) Pipeline Purpose
+
+This notebook combines the previous meta-analysis and differential abundance analysis into one reproducible pipeline.
+
+- Phase A: Build alpha/beta effect-size tables across studies
+- Phase B: Fit meta-meta models
+- Phase C: Run within-study DAA (ALDEx2 + ANCOM)
+- Phase D: Save all outputs to `results/`
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## 2) Configuration
+
+Use this section to turn phases on/off and control reproducibility.
+
+```{r config}
+set.seed(520)
+
+run_meta_phase <- TRUE
+run_daa_phase <- TRUE
+run_metric_correlation <- TRUE
+
+# Compute/plot toggles for fast reruns
+run_phase_a_collect <- TRUE
+run_phase_a_es <- TRUE
+
+run_metric_correlation_models <- TRUE
+run_metric_correlation_plots <- TRUE
+
+run_meta_models <- TRUE
+run_meta_plots <- TRUE
+
+run_loo_models <- TRUE
+run_loo_plots <- TRUE
+
+run_daa_models <- TRUE
+run_daa_plots <- TRUE
+
+
+# Set TRUE to process all studies in map; set FALSE to run only one study.
+run_all_studies <- TRUE
+study_single <- "Gubert et al. 2022"
+```
+
+## 3) Package Loading
+
+```{r load-packages}
+pacman::p_load(
+  phyloseq,
+  tidyr,
+  qiime2R,
+  vegan,
+  ggplot2,
+  picante,
+  dplyr,
+  tibble,
+  tidyverse,
+  ggpubr,
+  rstatix,
+  esc,
+  effectsize,
+  SRS,
+  reshape2,
+  here,
+  metaAidR,
+  metafor,
+  patchwork,
+  R.rsp,
+  orchaRd,
+  emmeans,
+  ape,
+  phytools,
+  flextable,
+  cli,
+  stringr,
+  ALDEx2,
+  ANCOMBC,
+  microbiome,
+  ggrepel,
+  lme4,
+  lmerTest
+)
+```
+
+## 4) Shared Functions and Data
+
+```{r load-functions-and-data}
+source(here("R_new", "toolbox.R"))
+
+load(here("data", "newest_SRS.RData"))
+
+if (!exists("dat33")) {
+  dat33 <- qza_to_phyloseq(
+    features = here("data", "table_filt_decomtam33_V4.qza"),
+    tree = here("data", "asvs-tree_V4.qza"),
+    taxonomy = here("data", "classification.qza"),
+    metadata = here("data", "metadata_dat33.txt")
+  )
+}
+
+study_group_map <- tibble::tribble(
+  ~Authors, ~group_var,
+  "Ellis et al. 2021", "sample_name",
+  "Lindheim et al. 2018", "study_accession",
+  "Pizarro et al. 2021", "experimental_treatment_raw",
+  "Lyte et al. 2022", "host_diet",
+  "Zou et al. 2021", "experimental_treatment_raw",
+  "Song et al. 2021", "experimental_treatment_raw",
+  "Velasco et al. 2021", "strain",
+  "Li et al. 2020", "experimental_treatment_raw",
+  "Son et al. 2019", "experimental_treatment_raw",
+  "Cheema & Pluznick 2019", "experimental_treatment",
+  "Zajac et al. 2022", "experimental_treatment_raw",
+  "Sun et al. 2020", "experimental_treatment_raw",
+  "Kozik et al. 2019", "experimental_treatment_raw",
+  "Tam et al. 2020", "experimental_treatment_raw",
+  "Ramakrishna et al. 2020", "experimental_treatment",
+  "Song et al. 2020", "experimental_treatment_raw",
+  "Ibrahim et al. 2019", "experimental_treatment_raw",
+  "Strickland et al. 2021", "experimental_treatment",
+  "Weng et al. 2019", "experimental_treatment_raw",
+  "Wolfe et al. 2020", "experimental_treatment_raw",
+  "Tashiro et al. 2020", "experimental_treatment_raw",
+  "Song et al. 2022", "experimental_treatment",
+  "Gubert et al. 2022", "experimental_treatment_raw"
+)
+
+if (!run_all_studies) {
+  study_group_map <- study_group_map %>% filter(Authors == study_single)
+}
+
+normalize_group <- function(df) {
+  df %>%
+    mutate(
+      subgroup = case_when(
+        is.na(experimental_treatment_raw) ~ NA_character_,
+        experimental_treatment_raw == "Water-T0" ~ "control",
+        Authors == "Velasco et al. 2021" & strain == "C57BL/6J" ~ "control",
+        TRUE ~ experimental_treatment_raw
+      ),
+      group_general = case_when(
+        is.na(subgroup) ~ NA_character_,
+        grepl("control", subgroup, ignore.case = TRUE) ~ "control",
+        TRUE ~ "treatment"
+      )
+    )
+}
+```
+
+## 5) Phase A — Alpha/Beta Effect-Size Data Assembly
+
+This phase iterates studies and subgroups to compute alpha diversity metrics and beta dispersion summaries.
+
+```{r phase-a-assemble}
+collect_one_study <- function(phy, study_name, group_var) {
+  sub <- subset_samples(phy, Authors == study_name)
+  sub <- subset_samples(sub, !(tissue %in% c("skin", "nose", "ear")))
+  sdf <- data.frame(sample_data(sub))
+
+  if (!group_var %in% names(sdf)) {
+    return(list(alpha = tibble(), beta = tibble(), sample_data = tibble()))
+  }
+
+  sdf <- normalize_group(sdf)
+  sample_data(sub) <- sample_data(sdf)
+
+  dat_alpha_local <- tibble()
+  tb_all_local <- tibble()
+
+  for (subgroup in unique(sdf[[group_var]])) {
+    sub_sub <- subset_samples(sub, get(group_var) == subgroup)
+    sub_sub <- subset_samples(sub_sub, !(tissue %in% c("skin", "nose", "ear")))
+
+    if (nsamples(sub_sub) < 2) next
+
+    raremin <- min(sample_sums(sub_sub))
+
+    otu <- tibble::rownames_to_column(as.data.frame(otu_table(sub_sub)), "Row")
+    rownames(otu) <- otu$Row
+    otu$Row <- NULL
+
+    otu.srs <- SRS(otu, Cmin = raremin)
+    rownames(otu.srs) <- rownames(otu)
+    otu.srs <- otu_table(as.matrix(otu.srs), taxa_are_rows = TRUE)
+
+    sub_srs <- merge_phyloseq(
+      phyloseq(otu.srs, sample_data(sub_sub), tax_table(sub_sub), phy_tree(sub_sub))
+    )
+
+    PD_value <- tryCatch(
+      picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(sub_srs)))), tree = phy_tree(sub_srs))[, 1],
+      error = function(e) rep(NA_real_, nsamples(sub_srs))
+    )
+
+    sub_alpha <- data.frame(
+      Observed = phyloseq::estimate_richness(sub_srs, measures = "Observed"),
+      Chao1 = phyloseq::estimate_richness(sub_srs, measures = "Chao1"),
+      Shannon = phyloseq::estimate_richness(sub_srs, measures = "Shannon"),
+      Simpson = phyloseq::estimate_richness(sub_srs, measures = "Simpson"),
+      PD = PD_value,
+      Sex = phyloseq::sample_data(sub_srs)$host_sex,
+      subgroup = phyloseq::sample_data(sub_srs)[[group_var]],
+      group_general = phyloseq::sample_data(sub_srs)$group_general,
+      Authors = phyloseq::sample_data(sub_srs)$Authors,
+      Protocol = phyloseq::sample_data(sub_srs)$Protocol,
+      tissue = phyloseq::sample_data(sub_srs)$tissue,
+      stringsAsFactors = FALSE
+    )
+    sub_alpha$Evenness <- sub_alpha$Shannon / log(sub_alpha$Observed)
+    dat_alpha_local <- bind_rows(dat_alpha_local, sub_alpha)
+
+    sub_df <- data.frame(sample_data(sub_sub))
+    group_general_val <- sub_df$group_general[which(!is.na(sub_df$group_general))[1]]
+    if (length(group_general_val) == 0) group_general_val <- NA_character_
+
+    n_male <- sum(sub_df$host_sex == "male")
+    n_female <- sum(sub_df$host_sex == "female")
+    if (n_male < 2 || n_female < 2) next
+
+    dist_list <- list(
+      unifrac_dist = phyloseq::distance(sub_sub, method = "unifrac", weighted = FALSE),
+      wunifrac_dist = phyloseq::distance(sub_sub, method = "unifrac", weighted = TRUE),
+      bray_dist = phyloseq::distance(sub_sub, method = "bray"),
+      jac_dist = phyloseq::distance(sub_sub, method = "jaccard")
+    )
+
+    for (dist_name in names(dist_list)) {
+      beta_disp <- betadisper(dist_list[[dist_name]], sub_df$host_sex)
+      sd_dispersion <- tapply(beta_disp$distances, sub_df$host_sex, sd)
+
+      tb <- tibble(
+        Sex = rownames(beta_disp$group.distances),
+        distance = as.numeric(beta_disp$group.distances),
+        sd = as.numeric(sd_dispersion),
+        metric = dist_name,
+        Authors = study_name,
+        subgroup = subgroup,
+        group_general = group_general_val,
+        n_male = n_male,
+        n_female = n_female
+      )
+
+      tb_all_local <- bind_rows(tb_all_local, tb)
+    }
+  }
+
+  list(alpha = dat_alpha_local, beta = tb_all_local, sample_data = sdf)
+}
+
+phase_a_cache_file <- here("results", "phase_a_collected.rds")
+
+if (run_phase_a_collect) {
+  collected <- purrr::pmap(study_group_map, ~collect_one_study(dat33, ..1, ..2))
+
+  dat_alpha <- bind_rows(purrr::map(collected, "alpha"))
+  tb_all <- bind_rows(purrr::map(collected, "beta"))
+
+  dat_alpha <- dat_alpha %>% filter(!tissue %in% c("skin", "nose", "ear"))
+
+  saveRDS(
+    list(dat_alpha = dat_alpha, tb_all = tb_all),
+    phase_a_cache_file
+  )
+} else {
+  if (!file.exists(phase_a_cache_file)) {
+    stop("Phase A cache not found at results/phase_a_collected.rds. Set run_phase_a_collect <- TRUE once.")
+  }
+  phase_a_cache <- readRDS(phase_a_cache_file)
+  dat_alpha <- phase_a_cache$dat_alpha
+  tb_all <- phase_a_cache$tb_all
+}
+```
+
+```{r phase-a-es-tables}
+if (run_meta_phase && run_phase_a_es) {
+  dat_alpha_long <- tidyr::pivot_longer(
+    dat_alpha,
+    cols = c(Observed, Chao1, Shannon, Simpson, PD, Evenness),
+    names_to = "metric",
+    values_to = "value"
+  )
+
+  dat_alpha_group <- dat_alpha_long %>%
+    group_by(across(all_of(c("Authors", "subgroup", "group_general", "Sex", "metric")))) %>%
+    summarise(mean = mean(value, na.rm = TRUE), sd = sd(value, na.rm = TRUE), n = dplyr::n(), .groups = "drop") %>%
+    pivot_wider(names_from = Sex, values_from = c(mean, sd, n))
+
+  alpha_es <- calculate_ES(dat_alpha_group, mod = c("Authors", "metric", "subgroup", "group_general")) %>%
+    mutate(
+      Protocol = str_extract(Authors, "^[^ ]+"),
+      metric = str_replace(metric, "Observed", "Richness"),
+      metric = str_replace(metric, "PD", "Faith's PD")
+    )
+
+  alpha_es[sapply(alpha_es, is.numeric)] <- lapply(
+    alpha_es[sapply(alpha_es, is.numeric)],
+    function(x) replace(x, is.infinite(x), NA)
+  )
+
+  alpha_es$metric <- factor(alpha_es$metric, levels = c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+  alpha_es$stats <- factor(alpha_es$stats, levels = c("lnRR", "lnCVR", "lnVR"))
+  alpha_es$obs <- seq_len(nrow(alpha_es))
+
+  tb_all_long <- tb_all %>%
+    pivot_wider(names_from = Sex, values_from = c(distance, sd)) %>%
+    rename(
+      mean_male = distance_male,
+      mean_female = distance_female,
+      sd_male = sd_male,
+      sd_female = sd_female
+    ) %>%
+    filter(n_male != 0, n_female != 0)
+
+  beta_es <- lnRR2(
+    tb_all_long[c("Authors", "metric", "subgroup", "group_general")],
+    tb_all_long$mean_male,
+    tb_all_long$sd_male,
+    tb_all_long$n_male,
+    tb_all_long$mean_female,
+    tb_all_long$sd_female,
+    tb_all_long$n_female
+  ) %>%
+    mutate(
+      Protocol = str_extract(Authors, "^[^ ]+"),
+      metric = str_replace(metric, "wunifrac_dist", "Weighted Unifrac"),
+      metric = str_replace(metric, "unifrac_dist", "Unweighted Unifrac"),
+      metric = str_replace(metric, "bray_dist", "Bray-Curtis"),
+      metric = str_replace(metric, "jac_dist", "Jaccard"),
+      obs = row_number()
+    )
+
+  beta_es$metric <- factor(beta_es$metric, levels = c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+
+  write.csv(alpha_es, here("results", "alpha_es.csv"), row.names = FALSE)
+  write.csv(beta_es, here("results", "beta_es_lnRR.csv"), row.names = FALSE)
+} else if (run_meta_phase) {
+  alpha_es_file <- here("results", "alpha_es.csv")
+  beta_es_file <- here("results", "beta_es_lnRR.csv")
+
+  if (!file.exists(alpha_es_file) || !file.exists(beta_es_file)) {
+    stop("Missing alpha/beta effect-size CSV files in results/. Set run_phase_a_es <- TRUE once.")
+  }
+
+  alpha_es <- read.csv(alpha_es_file, stringsAsFactors = FALSE)
+  beta_es <- read.csv(beta_es_file, stringsAsFactors = FALSE)
+
+  alpha_es$metric <- factor(alpha_es$metric, levels = c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+  alpha_es$stats <- factor(alpha_es$stats, levels = c("lnRR", "lnCVR", "lnVR"))
+  if (!"obs" %in% names(alpha_es)) alpha_es$obs <- seq_len(nrow(alpha_es))
+
+  beta_es$metric <- factor(beta_es$metric, levels = c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+  if (!"obs" %in% names(beta_es)) beta_es$obs <- seq_len(nrow(beta_es))
+}
+```
+
+## 6) Phase B — Correlation Across Diversity Metrics
+
+This phase tests how strongly alpha metrics agree with each other and how strongly beta distance metrics agree with each other.
+These correlations can help explain why significance appears in some metrics but not others.
+
+```{r phase-b-metric-correlations}
+if (run_metric_correlation) {
+  run_metric_correlation_models <- isTRUE(run_metric_correlation_models)
+  run_metric_correlation_plots <- isTRUE(run_metric_correlation_plots)
+
+  alpha_means_file <- here("results", "alpha_study_means.csv")
+  beta_means_file <- here("results", "beta_study_means.csv")
+  alpha_cor_file <- here("results", "alpha_metric_correlations.csv")
+  beta_cor_file <- here("results", "beta_metric_correlations.csv")
+
+  if (run_metric_correlation_models) {
+    if ("Chao1.Chao1" %in% names(dat_alpha) && !"Chao1" %in% names(dat_alpha)) {
+      dat_alpha$Chao1 <- dat_alpha$Chao1.Chao1
+    }
+
+    # ── Alpha: aggregate to study-level means for scatter labels ──────────────
+    alpha_study_means <- dat_alpha %>%
+      group_by(Authors, subgroup) %>%
+      summarise(
+        Richness     = mean(Observed, na.rm = TRUE),
+        Chao1        = mean(Chao1,    na.rm = TRUE),
+        Evenness     = mean(Evenness, na.rm = TRUE),
+        Shannon      = mean(Shannon,  na.rm = TRUE),
+        Simpson      = mean(Simpson,  na.rm = TRUE),
+        `Faith's PD` = mean(PD,       na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(study_label = paste(Authors, subgroup, sep = "\n"))
+
+    alpha_metrics <- c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD")
+
+    alpha_cor_mat <- cor(
+      alpha_study_means[, alpha_metrics],
+      method = "spearman", use = "pairwise.complete.obs"
+    )
+    alpha_cor_df <- as.data.frame(as.table(alpha_cor_mat)) %>%
+      rename(metric_1 = Var1, metric_2 = Var2, rho = Freq)
+
+    write.csv(alpha_study_means, alpha_means_file, row.names = FALSE)
+    write.csv(alpha_cor_df, alpha_cor_file, row.names = FALSE)
+
+    # ── Beta: aggregate to study-level means for scatter labels ───────────────
+    beta_study_means <- tb_all %>%
+      group_by(Authors, subgroup, metric) %>%
+      summarise(distance = mean(distance, na.rm = TRUE), .groups = "drop") %>%
+      pivot_wider(names_from = metric, values_from = distance) %>%
+      rename(
+        `Unweighted UniFrac` = unifrac_dist,
+        `Weighted UniFrac`   = wunifrac_dist,
+        `Bray-Curtis`        = bray_dist,
+        Jaccard              = jac_dist
+      ) %>%
+      mutate(study_label = paste(Authors, subgroup, sep = "\n"))
+
+    beta_metrics <- c("Unweighted UniFrac", "Weighted UniFrac", "Bray-Curtis", "Jaccard")
+
+    beta_cor_mat <- cor(
+      beta_study_means[, beta_metrics],
+      method = "spearman", use = "pairwise.complete.obs"
+    )
+    beta_cor_df <- as.data.frame(as.table(beta_cor_mat)) %>%
+      rename(metric_1 = Var1, metric_2 = Var2, rho = Freq)
+
+    write.csv(beta_study_means, beta_means_file, row.names = FALSE)
+    write.csv(beta_cor_df, beta_cor_file, row.names = FALSE)
+  } else {
+    required_files <- c(alpha_means_file, beta_means_file, alpha_cor_file, beta_cor_file)
+    missing_files <- required_files[!file.exists(required_files)]
+    if (length(missing_files) > 0) {
+      stop(
+        paste0(
+          "Missing Phase B correlation input files: ",
+          paste(basename(missing_files), collapse = ", "),
+          ". Set run_metric_correlation_models <- TRUE once."
+        )
+      )
+    }
+
+    alpha_study_means <- read.csv(alpha_means_file, stringsAsFactors = FALSE)
+    beta_study_means <- read.csv(beta_means_file, stringsAsFactors = FALSE)
+    alpha_cor_df <- read.csv(alpha_cor_file, stringsAsFactors = FALSE)
+    beta_cor_df <- read.csv(beta_cor_file, stringsAsFactors = FALSE)
+  }
+
+  if (run_metric_correlation_plots) {
+    # ── Helper: scatter plot for one metric pair with Cook's-D outlier labeling ──
+    scatter_with_outliers <- function(df, x_col, y_col,
+                                      label_col = "study_label",
+                                      n_label = 3, rho = NULL) {
+      x   <- df[[x_col]]
+      y   <- df[[y_col]]
+      lbl <- df[[label_col]]
+      keep <- complete.cases(x, y)
+      x <- x[keep]; y <- y[keep]; lbl <- lbl[keep]
+      n    <- length(x)
+      fit  <- lm(y ~ x)
+      cd   <- cooks.distance(fit)
+      thr   <- sort(cd, decreasing = TRUE)[min(n_label, n)]
+      flags <- cd >= thr & cd > 0
+      pdat  <- data.frame(x = x, y = y, label = lbl, outlier = flags,
+                          stringsAsFactors = FALSE)
+      sub_txt <- if (!is.null(rho)) sprintf("Spearman rho = %.2f", rho) else NULL
+      ggplot(pdat, aes(x = x, y = y)) +
+        geom_smooth(method = "lm", se = TRUE, color = "#2166AC",
+                    fill = "#AED6F1", alpha = 0.25, linewidth = 0.7) +
+        geom_point(aes(color = outlier), size = 2, alpha = 0.8) +
+        ggrepel::geom_text_repel(
+          data          = subset(pdat, outlier),
+          aes(label     = label),
+          size          = 2.4,
+          max.overlaps  = 20,
+          segment.color = "grey55",
+          box.padding   = 0.4,
+          color         = "#B2182B"
+        ) +
+        scale_color_manual(
+          values = c(`FALSE` = "grey40", `TRUE` = "#B2182B"),
+          guide  = "none"
+        ) +
+        labs(x = x_col, y = y_col, subtitle = sub_txt) +
+        theme_bw(base_size = 9) +
+        theme(plot.subtitle = element_text(size = 8, color = "grey40"))
+    }
+
+    get_rho <- function(cor_df, m1, m2) {
+      val <- cor_df %>%
+        filter((metric_1 == m1 & metric_2 == m2) | (metric_1 == m2 & metric_2 == m1)) %>%
+        slice_head(n = 1) %>%
+        pull(rho)
+      if (length(val) == 0) NA_real_ else as.numeric(val)
+    }
+
+    alpha_metrics <- c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD")
+    beta_metrics <- c("Unweighted UniFrac", "Weighted UniFrac", "Bray-Curtis", "Jaccard")
+
+    alpha_pairs <- combn(alpha_metrics, 2, simplify = FALSE)
+    alpha_scatter_list <- lapply(alpha_pairs, function(pr) {
+      rho_val <- get_rho(alpha_cor_df, pr[1], pr[2])
+      scatter_with_outliers(
+        df        = alpha_study_means,
+        x_col     = pr[1],
+        y_col     = pr[2],
+        label_col = "study_label",
+        n_label   = 3,
+        rho       = rho_val
+      )
+    })
+
+    p_alpha_scatter <- patchwork::wrap_plots(alpha_scatter_list, ncol = 5) +
+      patchwork::plot_annotation(
+        title    = "Pairwise Alpha Diversity Metric Scatter Plots",
+        subtitle = paste(
+          "Each point = study-level mean; red = top-3 influential studies (Cook's D);",
+          "blue line = OLS fit with 95% CI"
+        )
+      )
+
+    ggsave(
+      here("results", "alpha_metric_scatter_pairs.png"),
+      p_alpha_scatter,
+      width = 18, height = 10, dpi = 300
+    )
+
+    beta_pairs <- combn(beta_metrics, 2, simplify = FALSE)
+    beta_scatter_list <- lapply(beta_pairs, function(pr) {
+      rho_val <- get_rho(beta_cor_df, pr[1], pr[2])
+      scatter_with_outliers(
+        df        = beta_study_means,
+        x_col     = pr[1],
+        y_col     = pr[2],
+        label_col = "study_label",
+        n_label   = 3,
+        rho       = rho_val
+      )
+    })
+
+    p_beta_scatter <- patchwork::wrap_plots(beta_scatter_list, ncol = 3) +
+      patchwork::plot_annotation(
+        title    = "Pairwise Beta Diversity Metric Scatter Plots",
+        subtitle = paste(
+          "Each point = study-group mean; red = top-3 influential studies (Cook's D);",
+          "blue line = OLS fit with 95% CI"
+        )
+      )
+
+    ggsave(
+      here("results", "beta_metric_scatter_pairs.png"),
+      p_beta_scatter,
+      width = 14, height = 9, dpi = 300
+    )
+
+    p_alpha_scatter
+    p_beta_scatter
+  } else {
+    message("Phase B correlation plot generation skipped (run_metric_correlation_plots = FALSE).")
+  }
+}
+```
+
+## 7) Phase C — Meta-Meta Models
+
+This phase estimates summary effects per diversity metric.
+
+```{r phase-b-meta-models}
+if (run_meta_phase) {
+  alpha_stats <- unique(as.character(alpha_es$stats))
+  run_meta_models <- isTRUE(run_meta_models)
+  run_meta_plots <- isTRUE(run_meta_plots)
+  meta_fit_file <- here("results", "meta_model_fits.rds")
+
+  run_interaction_lrt <- function(data_in, domain_label, stats_label) {
+    dat_lrt <- data_in %>%
+      filter(
+        is.finite(yi),
+        is.finite(vi),
+        vi > 0,
+        !is.na(metric),
+        !is.na(group_general),
+        !is.na(Authors)
+      ) %>%
+      mutate(
+        metric = factor(metric),
+        group_general = factor(group_general)
+      )
+
+    base_row <- tibble(
+      domain = domain_label,
+      stats = stats_label,
+      n_rows = nrow(dat_lrt),
+      n_studies = dplyr::n_distinct(dat_lrt$Authors),
+      n_metrics = dplyr::n_distinct(dat_lrt$metric),
+      n_groups = dplyr::n_distinct(dat_lrt$group_general),
+      lrt = NA_real_,
+      pval = NA_real_,
+      interaction_sig = NA,
+      status = "not_tested"
+    )
+
+    if (nrow(dat_lrt) < 8 || dplyr::n_distinct(dat_lrt$metric) < 2 || dplyr::n_distinct(dat_lrt$group_general) < 2) {
+      return(base_row %>% mutate(status = "insufficient_data"))
+    }
+
+    fit_no_inter <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = ~metric + group_general - 1,
+        data = dat_lrt,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    fit_with_inter <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = ~metric * group_general - 1,
+        data = dat_lrt,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(fit_no_inter) || is.null(fit_with_inter)) {
+      return(base_row %>% mutate(status = "model_fit_failed"))
+    }
+
+    lrt_obj <- tryCatch(anova(fit_no_inter, fit_with_inter), error = function(e) NULL)
+    if (is.null(lrt_obj)) {
+      return(base_row %>% mutate(status = "lrt_failed"))
+    }
+
+    lrt_df <- as.data.frame(lrt_obj)
+    lrt_val <- if ("LRT" %in% names(lrt_df)) as.numeric(lrt_df$LRT[nrow(lrt_df)]) else NA_real_
+    pval_val <- if ("pval" %in% names(lrt_df)) as.numeric(lrt_df$pval[nrow(lrt_df)]) else NA_real_
+
+    base_row %>%
+      mutate(
+        lrt = lrt_val,
+        pval = pval_val,
+        interaction_sig = ifelse(is.na(pval_val), NA, pval_val < 0.05),
+        status = "ok"
+      )
+  }
+
+  if (run_meta_models) {
+    alpha_fit_list <- list()
+
+    alpha_model_results <- purrr::map_dfr(alpha_stats, function(stat_name) {
+      alpha_data_stat <- alpha_es %>% filter(stats == stat_name)
+      if (nrow(alpha_data_stat) < 3 || dplyr::n_distinct(alpha_data_stat$metric) < 2) {
+        return(tibble())
+      }
+
+      fit_alpha_stat <- rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = ~metric - 1,
+        data = alpha_data_stat,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      )
+
+      alpha_fit_list[[stat_name]] <<- fit_alpha_stat
+
+      if (run_meta_plots) {
+        p_alpha_meta_stat <- orchaRd::orchard_plot(
+          fit_alpha_stat,
+          mod = "metric",
+          group = "Authors",
+          xlab = stat_name
+        )
+
+        ggsave(
+          here("results", paste0("alpha_meta_orchard_", stat_name, ".png")),
+          p_alpha_meta_stat,
+          width = 10,
+          height = 7,
+          dpi = 300
+        )
+      }
+
+      as_tibble(orchaRd::mod_results(fit_alpha_stat, mod = "metric", group = "Authors")) %>%
+        mutate(stats = stat_name, .before = 1)
+    })
+
+    fit_beta_lnrr <- rma.mv(
+      yi,
+      vi,
+      random = list(~1 | Authors/subgroup, ~1 | obs),
+      mod = ~metric - 1,
+      data = beta_es,
+      test = "t",
+      method = "REML",
+      sparse = TRUE
+    )
+
+    beta_model_results <- as_tibble(orchaRd::mod_results(fit_beta_lnrr, mod = "metric", group = "Authors"))
+    if (run_meta_plots) {
+      p_beta_meta <- orchaRd::orchard_plot(fit_beta_lnrr, mod = "metric", group = "Authors", xlab = "lnRR")
+      ggsave(here("results", "beta_meta_orchard_lnRR.png"), p_beta_meta, width = 10, height = 7, dpi = 300)
+    }
+
+    alpha_interaction_lrt <- purrr::map_dfr(alpha_stats, function(stat_name) {
+      run_interaction_lrt(
+        data_in = alpha_es %>% filter(stats == stat_name),
+        domain_label = "alpha",
+        stats_label = stat_name
+      )
+    })
+
+    beta_interaction_lrt <- run_interaction_lrt(
+      data_in = beta_es,
+      domain_label = "beta",
+      stats_label = "lnRR"
+    )
+
+    meta_interaction_lrt <- bind_rows(alpha_interaction_lrt, beta_interaction_lrt)
+
+    write.csv(alpha_model_results, here("results", "alpha_meta_model_results.csv"), row.names = FALSE)
+    write.csv(beta_model_results, here("results", "beta_meta_model_results.csv"), row.names = FALSE)
+    write.csv(meta_interaction_lrt, here("results", "meta_metric_treatment_interaction_lrt.csv"), row.names = FALSE)
+
+    saveRDS(
+      list(alpha_fits = alpha_fit_list, beta_fit = fit_beta_lnrr),
+      meta_fit_file
+    )
+  } else {
+    alpha_model_file <- here("results", "alpha_meta_model_results.csv")
+    beta_model_file <- here("results", "beta_meta_model_results.csv")
+    lrt_file <- here("results", "meta_metric_treatment_interaction_lrt.csv")
+
+    if (!file.exists(alpha_model_file) || !file.exists(beta_model_file) || !file.exists(lrt_file)) {
+      stop("Missing Phase C meta CSV outputs. Set run_meta_models <- TRUE once.")
+    }
+
+    alpha_model_results <- read.csv(alpha_model_file, stringsAsFactors = FALSE)
+    beta_model_results <- read.csv(beta_model_file, stringsAsFactors = FALSE)
+    meta_interaction_lrt <- read.csv(lrt_file, stringsAsFactors = FALSE)
+
+    if (run_meta_plots) {
+      if (!file.exists(meta_fit_file)) {
+        stop("Missing results/meta_model_fits.rds for plot-only meta reruns. Set run_meta_models <- TRUE once.")
+      }
+
+      meta_fits <- readRDS(meta_fit_file)
+      alpha_fit_list <- meta_fits$alpha_fits
+      fit_beta_lnrr <- meta_fits$beta_fit
+
+      for (stat_name in names(alpha_fit_list)) {
+        p_alpha_meta_stat <- orchaRd::orchard_plot(
+          alpha_fit_list[[stat_name]],
+          mod = "metric",
+          group = "Authors",
+          xlab = stat_name
+        )
+        ggsave(
+          here("results", paste0("alpha_meta_orchard_", stat_name, ".png")),
+          p_alpha_meta_stat,
+          width = 10,
+          height = 7,
+          dpi = 300
+        )
+      }
+
+      p_beta_meta <- orchaRd::orchard_plot(fit_beta_lnrr, mod = "metric", group = "Authors", xlab = "lnRR")
+      ggsave(here("results", "beta_meta_orchard_lnRR.png"), p_beta_meta, width = 10, height = 7, dpi = 300)
+    }
+  }
+
+  if (run_meta_plots && exists("p_beta_meta")) {
+    p_beta_meta
+  } else if (!run_meta_plots) {
+    message("Phase C meta plot generation skipped (run_meta_plots = FALSE).")
+  }
+}
+```
+
+### Phase C.1 — Leave-One-Study-Out Sensitivity Analysis
+
+This sensitivity analysis re-fits each meta model after excluding one study at a time.
+If one study is strongly driving a metric's summary effect, the coefficient shift will be large in these leave-one-out results.
+
+```{r phase-c1-leave-one-out}
+
+if (run_meta_phase && (run_loo_models || run_loo_plots)) {
+  run_loo_models <- isTRUE(run_loo_models)
+  run_loo_plots <- isTRUE(run_loo_plots)
+
+  beta_model_data <- beta_es
+
+  extract_coef_table <- function(fit_obj, left_out_label) {
+    beta_mat <- as.matrix(fit_obj$b)
+    term_names <- rownames(beta_mat)
+    if (is.null(term_names)) {
+      term_names <- paste0("term_", seq_len(nrow(beta_mat)))
+    }
+
+    tibble(
+      left_out = left_out_label,
+      term = term_names,
+      estimate = as.numeric(beta_mat[, 1]),
+      se = as.numeric(fit_obj$se),
+      ci_lb = as.numeric(fit_obj$ci.lb),
+      ci_ub = as.numeric(fit_obj$ci.ub),
+      pval = as.numeric(fit_obj$pval)
+    )
+  }
+
+  run_leave_one_out <- function(data_in, model_label) {
+    full_fit <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = ~metric - 1,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(full_fit)) {
+      return(NULL)
+    }
+
+    full_tbl <- extract_coef_table(full_fit, left_out_label = "none")
+
+    loo_tbl <- purrr::map_dfr(unique(data_in$Authors), function(study_drop) {
+      data_loo <- data_in %>% filter(Authors != study_drop)
+
+      if (nrow(data_loo) < 3 || dplyr::n_distinct(data_loo$metric) < 2) {
+        return(tibble())
+      }
+
+      fit_loo <- tryCatch(
+        rma.mv(
+          yi,
+          vi,
+          random = list(~1 | Authors/subgroup, ~1 | obs),
+          mod = ~metric - 1,
+          data = data_loo,
+          test = "t",
+          method = "REML",
+          sparse = TRUE
+        ),
+        error = function(e) NULL
+      )
+
+      if (is.null(fit_loo)) {
+        return(tibble())
+      }
+
+      extract_coef_table(fit_loo, left_out_label = study_drop)
+    })
+
+    combined_tbl <- bind_rows(full_tbl, loo_tbl) %>%
+      mutate(model = model_label)
+
+    delta_tbl <- combined_tbl %>%
+      filter(left_out != "none") %>%
+      left_join(
+        full_tbl %>% dplyr::select(
+          term,
+          full_estimate = estimate,
+          full_pval     = pval,
+          full_ci_lb    = ci_lb,
+          full_ci_ub    = ci_ub
+        ),
+        by = "term"
+      ) %>%
+      mutate(
+        delta_from_full = estimate - full_estimate,
+        full_sig       = full_pval < 0.05,
+        loo_sig        = pval < 0.05,
+        direction_flip = sign(estimate) != sign(full_estimate),
+        sig_change     = full_sig != loo_sig,
+        robustness     = dplyr::case_when(
+          direction_flip &  sig_change ~ "Flip + sig. change",
+          direction_flip & !sig_change ~ "Direction flip only",
+         !direction_flip &  sig_change ~ "Sig. change only",
+          TRUE                         ~ "Stable"
+        )
+      )
+
+    list(full = full_tbl, all = combined_tbl, delta = delta_tbl)
+  }
+
+  clean_file_tag <- function(x) {
+    x %>%
+      tolower() %>%
+      stringr::str_replace_all("[^a-z0-9]+", "_") %>%
+      stringr::str_replace_all("^_|_$", "")
+  }
+
+  plot_loo_by_metric <- function(df_in, title_text, subtitle_text) {
+    pdat <- df_in %>%
+      mutate(
+        left_out = forcats::fct_reorder(left_out, abs(delta_from_full)),
+        term = stringr::str_remove(term, "^metric")
+      )
+
+    ggplot(pdat, aes(x = delta_from_full, y = left_out)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+      geom_segment(aes(x = 0, xend = delta_from_full, y = left_out, yend = left_out), alpha = 0.6) +
+      geom_point(aes(color = delta_from_full > 0), size = 2.5) +
+      scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "#2166AC"), guide = "none") +
+      facet_wrap(~term, scales = "free_y") +
+      labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = "Delta from full-model estimate",
+        y = "Left-out study"
+      ) +
+      theme_bw() +
+      theme(strip.text = element_text(size = 9))
+  }
+
+  robustness_levels <- c("Stable", "Sig. change only", "Direction flip only", "Flip + sig. change")
+  robustness_colors <- c(
+    "Stable"              = "#4DAF4A",
+    "Sig. change only"    = "#FF7F00",
+    "Direction flip only" = "#984EA3",
+    "Flip + sig. change"  = "#E41A1C"
+  )
+
+  if (run_loo_models) {
+    alpha_stats <- unique(as.character(alpha_es$stats))
+
+    alpha_loo_list <- purrr::map(alpha_stats, function(stat_name) {
+      alpha_model_data <- alpha_es %>% filter(stats == stat_name)
+
+      if (nrow(alpha_model_data) < 3 || dplyr::n_distinct(alpha_model_data$metric) < 2) {
+        return(NULL)
+      }
+
+      out <- run_leave_one_out(alpha_model_data, model_label = paste0("alpha_", stat_name))
+      if (is.null(out)) {
+        return(NULL)
+      }
+
+      list(
+        all = out$all %>% mutate(stats = stat_name, .before = 1),
+        delta = out$delta %>% mutate(stats = stat_name, .before = 1)
+      )
+    })
+
+    alpha_loo_list <- purrr::compact(alpha_loo_list)
+    beta_loo <- run_leave_one_out(beta_model_data, model_label = "beta_lnRR")
+
+    alpha_loo_all <- bind_rows(purrr::map(alpha_loo_list, "all"))
+    alpha_loo_delta <- bind_rows(purrr::map(alpha_loo_list, "delta"))
+    beta_loo_all <- beta_loo$all
+    beta_loo_delta <- beta_loo$delta
+
+    write.csv(alpha_loo_all, here("results", "alpha_meta_leave_one_out.csv"), row.names = FALSE)
+    write.csv(alpha_loo_delta, here("results", "alpha_meta_leave_one_out_delta.csv"), row.names = FALSE)
+    write.csv(beta_loo_all, here("results", "beta_meta_leave_one_out.csv"), row.names = FALSE)
+    write.csv(beta_loo_delta, here("results", "beta_meta_leave_one_out_delta.csv"), row.names = FALSE)
+
+    alpha_influential <- alpha_loo_delta %>%
+      group_by(stats, term) %>%
+      slice_max(order_by = abs(delta_from_full), n = 5, with_ties = FALSE) %>%
+      ungroup()
+
+    beta_influential <- beta_loo_delta %>%
+      group_by(term) %>%
+      slice_max(order_by = abs(delta_from_full), n = 5, with_ties = FALSE) %>%
+      ungroup()
+
+    alpha_robustness_summary <- alpha_loo_delta %>%
+      mutate(
+        term       = stringr::str_remove(term, "^metric"),
+        robustness = factor(robustness, levels = robustness_levels)
+      ) %>%
+      count(stats, term, robustness, name = "n_studies") %>%
+      tidyr::complete(stats, term, robustness, fill = list(n_studies = 0L))
+
+    beta_robustness_summary <- beta_loo_delta %>%
+      mutate(
+        term       = stringr::str_remove(term, "^metric"),
+        robustness = factor(robustness, levels = robustness_levels)
+      ) %>%
+      count(term, robustness, name = "n_studies") %>%
+      tidyr::complete(term, robustness, fill = list(n_studies = 0L))
+
+    write.csv(alpha_robustness_summary, here("results", "alpha_meta_loo_robustness.csv"), row.names = FALSE)
+    write.csv(beta_robustness_summary,  here("results", "beta_meta_loo_robustness.csv"),  row.names = FALSE)
+    write.csv(alpha_influential, here("results", "alpha_meta_leave_one_out_top_influential.csv"), row.names = FALSE)
+    write.csv(beta_influential, here("results", "beta_meta_leave_one_out_top_influential.csv"), row.names = FALSE)
+  } else {
+    req_loo_files <- c(
+      here("results", "alpha_meta_leave_one_out.csv"),
+      here("results", "alpha_meta_leave_one_out_delta.csv"),
+      here("results", "beta_meta_leave_one_out.csv"),
+      here("results", "beta_meta_leave_one_out_delta.csv"),
+      here("results", "alpha_meta_loo_robustness.csv"),
+      here("results", "beta_meta_loo_robustness.csv"),
+      here("results", "alpha_meta_leave_one_out_top_influential.csv"),
+      here("results", "beta_meta_leave_one_out_top_influential.csv")
+    )
+
+    missing_loo_files <- req_loo_files[!file.exists(req_loo_files)]
+    if (length(missing_loo_files) > 0) {
+      stop(
+        paste0(
+          "Missing Phase C.1 LOO files: ",
+          paste(basename(missing_loo_files), collapse = ", "),
+          ". Set run_loo_models <- TRUE once."
+        )
+      )
+    }
+
+    alpha_loo_all <- read.csv(here("results", "alpha_meta_leave_one_out.csv"), stringsAsFactors = FALSE)
+    alpha_loo_delta <- read.csv(here("results", "alpha_meta_leave_one_out_delta.csv"), stringsAsFactors = FALSE)
+    beta_loo_all <- read.csv(here("results", "beta_meta_leave_one_out.csv"), stringsAsFactors = FALSE)
+    beta_loo_delta <- read.csv(here("results", "beta_meta_leave_one_out_delta.csv"), stringsAsFactors = FALSE)
+    alpha_robustness_summary <- read.csv(here("results", "alpha_meta_loo_robustness.csv"), stringsAsFactors = FALSE)
+    beta_robustness_summary <- read.csv(here("results", "beta_meta_loo_robustness.csv"), stringsAsFactors = FALSE)
+    alpha_influential <- read.csv(here("results", "alpha_meta_leave_one_out_top_influential.csv"), stringsAsFactors = FALSE)
+    beta_influential <- read.csv(here("results", "beta_meta_leave_one_out_top_influential.csv"), stringsAsFactors = FALSE)
+  }
+
+  if (run_loo_plots) {
+    alpha_robustness_summary <- alpha_robustness_summary %>%
+      mutate(robustness = factor(robustness, levels = robustness_levels))
+    beta_robustness_summary <- beta_robustness_summary %>%
+      mutate(robustness = factor(robustness, levels = robustness_levels))
+
+    p_alpha_robustness <- alpha_robustness_summary %>%
+      ggplot(aes(x = term, y = n_studies, fill = robustness)) +
+      geom_col(position = "stack", width = 0.7) +
+      scale_fill_manual(values = robustness_colors, name = "LOO outcome") +
+      facet_wrap(~stats, ncol = 1) +
+      labs(
+        title    = "Alpha Diversity — LOO Robustness Summary",
+        subtitle = "Number of studies whose removal changes direction or significance",
+        x        = "Metric",
+        y        = "Number of studies"
+      ) +
+      theme_bw() +
+      theme(
+        axis.text.x  = element_text(angle = 35, hjust = 1),
+        strip.text   = element_text(face = "bold")
+      )
+
+    p_beta_robustness <- beta_robustness_summary %>%
+      ggplot(aes(x = term, y = n_studies, fill = robustness)) +
+      geom_col(position = "stack", width = 0.7) +
+      scale_fill_manual(values = robustness_colors, name = "LOO outcome") +
+      labs(
+        title    = "Beta Diversity (lnRR) — LOO Robustness Summary",
+        subtitle = "Number of studies whose removal changes direction or significance",
+        x        = "Metric",
+        y        = "Number of studies"
+      ) +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 35, hjust = 1))
+
+    ggsave(here("results", "meta_loo_robustness_alpha.png"), p_alpha_robustness,
+           width = 8, height = 7, dpi = 300)
+    ggsave(here("results", "meta_loo_robustness_beta.png"),  p_beta_robustness,
+           width = 7, height = 5, dpi = 300)
+
+    alpha_plot_index <- alpha_influential %>%
+      group_by(stats) %>%
+      group_split() %>%
+      purrr::map_dfr(function(dsub) {
+        stat_name <- unique(dsub$stats)
+
+        p <- plot_loo_by_metric(
+          dsub,
+          title_text = paste("Alpha LOO Influence (", stat_name, ")", sep = ""),
+          subtitle_text = paste("Effect size:", stat_name)
+        )
+
+        file_name <- paste0("meta_leave_one_out_influence_alpha_", clean_file_tag(stat_name), ".png")
+        file_path <- here("results", file_name)
+        n_terms <- dplyr::n_distinct(dsub$term)
+        ggsave(file_path, p, width = 4 * n_terms, height = 6, dpi = 300)
+
+        tibble(
+          domain = "alpha",
+          stats = stat_name,
+          term = "all_terms",
+          plot_file = paste0("results/", file_name)
+        )
+      })
+
+    p_beta_loo <- plot_loo_by_metric(
+      beta_influential,
+      title_text = "Beta LOO Influence (lnRR)",
+      subtitle_text = "Effect size: lnRR"
+    )
+    beta_file_name <- "meta_leave_one_out_influence_beta_lnrr.png"
+    beta_file_path <- here("results", beta_file_name)
+    beta_n_terms <- dplyr::n_distinct(beta_influential$term)
+    ggsave(beta_file_path, p_beta_loo, width = 4 * beta_n_terms, height = 6, dpi = 300)
+
+    beta_plot_index <- tibble(
+      domain = "beta",
+      stats = "lnRR",
+      term = "all_terms",
+      plot_file = paste0("results/", beta_file_name)
+    )
+
+    loo_plot_index <- bind_rows(alpha_plot_index, beta_plot_index)
+    write.csv(loo_plot_index, here("results", "meta_leave_one_out_plot_index.csv"), row.names = FALSE)
+
+    loo_plot_index
+  } else {
+    message("Phase C.1 LOO plot generation skipped (run_loo_plots = FALSE).")
+  }
+}
+```
+
+## 8) Phase D — Differential Abundance Analysis (ALDEx2 + ANCOM)
+
+This phase runs DAA within each study/subgroup and then identifies overlap between ALDEx2 and ANCOM signals.
+
+```{r phase-c-daa}
+if (run_daa_phase) {
+  run_daa_models <- isTRUE(run_daa_models)
+  run_daa_plots <- isTRUE(run_daa_plots)
+
+  if (run_daa_models) {
+    res_all <- list()
+    ancom_all <- list()
+
+    for (i in seq_len(nrow(study_group_map))) {
+      study <- study_group_map$Authors[i]
+      group_var <- study_group_map$group_var[i]
+
+      sub <- subset_samples(dat33, Authors == study)
+      sub <- subset_samples(sub, !(tissue %in% c("skin", "nose", "ear")))
+
+      sample_df <- data.frame(sample_data(sub))
+      if (!group_var %in% names(sample_df)) next
+
+      sample_df <- normalize_group(sample_df)
+      sample_data(sub) <- sample_data(sample_df)
+
+      group_values <- unique(sample_df[[group_var]])
+
+      for (group in group_values) {
+        tb <- subset_samples(sub, get(group_var) == group)
+        sdf_tb <- data.frame(sample_data(tb))
+
+        valid_group <-
+          length(unique(sdf_tb$host_sex)) > 1 &&
+          sum(sdf_tb$host_sex == "male") > 1 &&
+          sum(sdf_tb$host_sex == "female") > 1
+
+        if (!valid_group) next
+
+        d_x <- aldex.clr(as.data.frame(otu_table(tb)), conds = sample_data(tb)$host_sex, mc.samples = 128)
+        d_eff <- aldex.effect(d_x)
+        d_tt <- aldex.ttest(d_x)
+        res <- data.frame(d_eff, d_tt)
+
+        taxa <- tibble::rownames_to_column(as.data.frame(tax_table(tb)), var = "Row.names")
+        res_taxa <- merge(taxa, res, by = "Row.names") %>%
+          mutate(
+            Group = group,
+            Study = study,
+            direct = case_when(
+              effect > 0 ~ "Positive",
+              effect <= 0 ~ "Negative",
+              TRUE ~ "NA"
+            )
+          )
+        res_all[[paste(study, group, sep = "__")]] <- res_taxa
+
+        rel_abun <- transform_sample_counts(tb, function(x) x / sum(x))
+        remove_low_abun <- filter_taxa(rel_abun, function(x) max(x) > 0.001, TRUE)
+        tb_f <- filter_taxa(remove_low_abun, function(x) stats::var(x) > 1e-06, TRUE)
+
+        out <- ANCOMBC::ancom(
+          data = tb_f,
+          meta_data = sdf_tb,
+          p_adj_method = "BH",
+          prv_cut = 0.10,
+          lib_cut = min(sample_sums(tb_f)),
+          main_var = "host_sex",
+          alpha = 0.05,
+          n_cl = 1
+        )
+
+        q_val <- out$q_data
+        beta_val <- out$beta_data * (q_val < 0.05)
+        beta_pos <- apply(abs(beta_val), 2, which.max)
+        beta_max <- vapply(seq_along(beta_pos), function(k) beta_val[beta_pos[k], k], FUN.VALUE = double(1))
+
+        n_taxa <- ifelse(
+          is.null(out$zero_ind),
+          nrow(otu_table(tb_f)),
+          sum(apply(out$zero_ind[, -1, drop = FALSE], 1, sum) == 0)
+        )
+
+        df_w <- out$res %>%
+          mutate(
+            beta = beta_max,
+            direct = case_when(
+              detected_0.7 & beta > 0 ~ "Positive",
+              detected_0.7 & beta <= 0 ~ "Negative",
+              TRUE ~ "Not Significant"
+            )
+          ) %>%
+          arrange(W)
+
+        df_w_taxa <- merge(taxa, df_w, by = "Row.names") %>%
+          mutate(group = group, Study = study)
+        df_w_taxa$W <- replace(df_w_taxa$W, is.infinite(df_w_taxa$W), n_taxa - 1)
+
+        ancom_all[[paste(study, group, sep = "__")]] <- df_w_taxa
+      }
+    }
+
+    res.all <- bind_rows(res_all)
+    res.all.sig <- res.all %>% filter(wi.eBH < 0.05)
+
+    ancom.all <- bind_rows(ancom_all)
+    ancom.all.sig <- ancom.all %>% filter(direct %in% c("Positive", "Negative"))
+
+    write.csv(res.all, here("results", "res.all.combined.csv"), row.names = FALSE)
+    write.csv(res.all.sig, here("results", "res.all.combined.sig.csv"), row.names = FALSE)
+    write.csv(ancom.all, here("results", "ancom.all.combined_sex.csv"), row.names = FALSE)
+    write.csv(ancom.all.sig, here("results", "ancom.all.combined.sig_sex.csv"), row.names = FALSE)
+
+    if (nrow(res.all.sig) > 0 && nrow(ancom.all.sig) > 0) {
+      res.all.sig <- res.all.sig %>% mutate(id = paste(Group, Study, direct, sep = "_"))
+      ancom.all.sig <- ancom.all.sig %>% mutate(id = paste(group, Study, direct, sep = "_"))
+
+      common_ids <- intersect(res.all.sig$id, ancom.all.sig$id)
+      overlap_a <- res.all.sig %>% filter(id %in% common_ids) %>% pull(Row.names)
+      overlap_b <- ancom.all.sig %>% filter(id %in% common_ids) %>% pull(Row.names)
+
+      both.sig <- res.all.sig %>% filter(Row.names %in% intersect(overlap_a, overlap_b))
+      write.csv(both.sig, here("results", "both.sig_sex.csv"), row.names = FALSE)
+    }
+
+    daa_sig_counts <- bind_rows(
+      res.all.sig %>% mutate(method = "ALDEx2") %>% dplyr::select(method, Study),
+      ancom.all.sig %>% mutate(method = "ANCOM") %>% dplyr::select(method, Study)
+    ) %>%
+      count(method, Study, name = "n_sig")
+
+    write.csv(daa_sig_counts, here("results", "daa_significant_counts_by_study.csv"), row.names = FALSE)
+  } else {
+    daa_counts_file <- here("results", "daa_significant_counts_by_study.csv")
+    if (!file.exists(daa_counts_file)) {
+      stop("Missing results/daa_significant_counts_by_study.csv. Set run_daa_models <- TRUE once.")
+    }
+    daa_sig_counts <- read.csv(daa_counts_file, stringsAsFactors = FALSE)
+  }
+
+  if (run_daa_plots) {
+    p_daa_sig_counts <- daa_sig_counts %>%
+      ggplot(aes(x = reorder(Study, n_sig), y = n_sig, fill = method)) +
+      geom_col(position = "dodge") +
+      coord_flip() +
+      labs(
+        title = "Significant Taxa Counts by Study and Method",
+        x = NULL,
+        y = "Number of significant taxa",
+        fill = "Method"
+      ) +
+      theme_bw()
+
+    ggsave(here("results", "daa_significant_counts_by_study.png"), p_daa_sig_counts, width = 10, height = 8, dpi = 300)
+
+    p_daa_sig_counts
+  } else {
+    message("Phase D DAA plot generation skipped (run_daa_plots = FALSE).")
+  }
+}
+```
+
+### Phase D.1 — How Taxa Abundance Explains Alpha Diversity
+
+This section fits per-taxon association models of the form `diversity ~ abundance`
+for alpha diversity only, and tests whether the relationship changes by sex and treatment/subgroup using interaction terms.
+
+```{r phase-d1-diversity-vs-taxa}
+# Phase D.1: test one or multiple taxa cutoffs (e.g., c(25, 100, 200))
+#top_n_taxa_set <- c(25, 100)
+run_d1_models <- FALSE ##not rerun the whole analysis
+run_d1_plots <- TRUE ##for revise plots
+
+if (run_daa_phase) {
+  # Allow this chunk to run standalone in a fresh session
+  if (!exists("normalize_group")) {
+    normalize_group <- function(df) {
+      df %>%
+        mutate(
+          subgroup = case_when(
+            is.na(experimental_treatment_raw) ~ NA_character_,
+            experimental_treatment_raw == "Water-T0" ~ "control",
+            Authors == "Velasco et al. 2021" & strain == "C57BL/6J" ~ "control",
+            TRUE ~ experimental_treatment_raw
+          ),
+          group_general = case_when(
+            is.na(subgroup) ~ NA_character_,
+            grepl("control", subgroup, ignore.case = TRUE) ~ "control",
+            TRUE ~ "treatment"
+          )
+        )
+    }
+  }
+
+  required_objs <- c("study_group_map", "dat33", "dat_alpha")
+  missing_objs <- required_objs[!vapply(required_objs, exists, logical(1), inherits = TRUE)]
+  if (length(missing_objs) > 0) {
+    stop(
+      paste0(
+        "Missing required object(s): ", paste(missing_objs, collapse = ", "),
+        ". Run Sections 3-5 before Phase D.1."
+      )
+    )
+  }
+
+  top_n_taxa_set <- sort(unique(as.integer(top_n_taxa_set[top_n_taxa_set > 0])))
+  if (length(top_n_taxa_set) == 0) {
+    stop("top_n_taxa_set must contain at least one positive integer.")
+  }
+
+  run_d1_models <- isTRUE(run_d1_models)
+  run_d1_plots <- isTRUE(run_d1_plots)
+  top_k_interaction_taxa <- 5
+
+  if (run_d1_models) {
+
+  # ----- Sample annotation with harmonized subgroup/treatment labels -----
+  meta_all <- data.frame(sample_data(dat33)) %>%
+    tibble::rownames_to_column("SampleID")
+
+  sample_annot <- purrr::map2_dfr(study_group_map$Authors, study_group_map$group_var, function(study, group_var) {
+    meta_sub <- meta_all %>% filter(Authors == study)
+    if (nrow(meta_sub) == 0) return(tibble())
+
+    meta_sub <- normalize_group(meta_sub)
+    subgroup_val <- if (group_var %in% names(meta_sub)) as.character(meta_sub[[group_var]]) else rep(NA_character_, nrow(meta_sub))
+    if (length(subgroup_val) == 1) subgroup_val <- rep(subgroup_val, nrow(meta_sub))
+    if (length(subgroup_val) == 0) subgroup_val <- rep(NA_character_, nrow(meta_sub))
+
+    group_general_val <- if ("group_general" %in% names(meta_sub)) as.character(meta_sub$group_general) else rep(NA_character_, nrow(meta_sub))
+    if (length(group_general_val) == 1) group_general_val <- rep(group_general_val, nrow(meta_sub))
+    if (length(group_general_val) == 0) group_general_val <- rep(NA_character_, nrow(meta_sub))
+
+    host_sex_val <- if ("host_sex" %in% names(meta_sub)) tolower(as.character(meta_sub$host_sex)) else rep(NA_character_, nrow(meta_sub))
+    if (length(host_sex_val) == 1) host_sex_val <- rep(host_sex_val, nrow(meta_sub))
+    if (length(host_sex_val) == 0) host_sex_val <- rep(NA_character_, nrow(meta_sub))
+
+    tissue_val <- if ("tissue" %in% names(meta_sub)) as.character(meta_sub$tissue) else rep(NA_character_, nrow(meta_sub))
+    if (length(tissue_val) == 1) tissue_val <- rep(tissue_val, nrow(meta_sub))
+    if (length(tissue_val) == 0) tissue_val <- rep(NA_character_, nrow(meta_sub))
+
+    tibble(
+      SampleID = meta_sub$SampleID,
+      Authors = meta_sub$Authors,
+      host_sex = host_sex_val,
+      subgroup = subgroup_val,
+      group_general = group_general_val,
+      tissue = tissue_val
+    )
+  }) %>%
+    filter(!tissue %in% c("skin", "nose", "ear")) %>%
+    mutate(
+      group_general = ifelse(is.na(group_general) | group_general == "", "unknown", group_general)
+    )
+
+  # ----- Taxa abundance matrix (relative abundance, top taxa) -----
+  otu_mat <- as(phyloseq::otu_table(dat33), "matrix")
+  if (!phyloseq::taxa_are_rows(dat33)) otu_mat <- t(otu_mat)
+  otu_mat <- otu_mat[, colnames(otu_mat) %in% sample_annot$SampleID, drop = FALSE]
+
+  sample_sums_vec <- colSums(otu_mat)
+  sample_sums_vec[sample_sums_vec == 0] <- NA_real_
+  otu_rel <- sweep(otu_mat, 2, sample_sums_vec, "/")
+
+  tax_mean <- rowMeans(otu_rel, na.rm = TRUE)
+
+  tax_df <- as.data.frame(phyloseq::tax_table(dat33)) %>%
+    tibble::rownames_to_column("TaxonID")
+
+  clean_tax_rank <- function(x) {
+    x <- as.character(x)
+    x[x %in% c("", "NA", "Unknown", "unknown", "uncultured", "Unassigned", "unclassified", "g__", "s__")] <- NA
+    x
+  }
+
+  rank_cols <- intersect(c("Species", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom"), names(tax_df))
+  if (all(c("Genus", "Species") %in% names(tax_df))) {
+    tax_df <- tax_df %>%
+      mutate(
+        Genus_clean = clean_tax_rank(Genus),
+        Species_clean = clean_tax_rank(Species),
+        taxon_core = case_when(
+          !is.na(Genus_clean) & !is.na(Species_clean) ~ paste(Genus_clean, Species_clean),
+          !is.na(Genus_clean) ~ Genus_clean,
+          !is.na(Species_clean) ~ Species_clean,
+          TRUE ~ NA_character_
+        )
+      )
+  } else if (length(rank_cols) == 0) {
+    tax_df$taxon_core <- NA_character_
+  } else {
+    tax_df$taxon_core <- apply(tax_df[, rank_cols, drop = FALSE], 1, function(x) {
+      vals <- clean_tax_rank(x)
+      first_non_na <- vals[which(!is.na(vals))[1]]
+      ifelse(is.na(first_non_na), NA_character_, first_non_na)
+    })
+  }
+  tax_df$taxon_core <- dplyr::coalesce(tax_df$taxon_core, "Unclassified taxon")
+
+  # ----- Alpha diversity outcomes (use existing dat_alpha from Phase A) -----
+  alpha_df <- dat_alpha %>%
+    mutate(SampleID = rownames(dat_alpha)) %>%
+    left_join(sample_annot, by = c("SampleID", "Authors", "subgroup", "group_general", "tissue")) %>%
+    mutate(
+      host_sex = dplyr::coalesce(tolower(as.character(Sex)), host_sex)
+    ) %>%
+    filter(!is.na(host_sex), host_sex %in% c("male", "female")) %>%
+    tidyr::pivot_longer(
+      cols = c(Observed, Chao1, Shannon, Simpson, PD, Evenness),
+      names_to = "metric",
+      values_to = "outcome"
+    )
+
+  # ----- Modeling helper -----
+  fit_div_abd_models <- function(df_in, taxa_abund_long_in) {
+    merged <- df_in %>%
+      left_join(taxa_abund_long_in %>% dplyr::select(SampleID, TaxonID, taxon_label, abundance), by = "SampleID") %>%
+      filter(
+        is.finite(outcome),
+        is.finite(abundance),
+        !is.na(TaxonID),
+        !is.na(metric),
+        !is.na(host_sex),
+        !is.na(group_general),
+        !is.na(Authors)
+      )
+
+    model_tbl <- merged %>%
+      group_by(metric, TaxonID) %>%
+      group_split() %>%
+      purrr::map_dfr(function(dsub) {
+        if (nrow(dsub) < 20) return(tibble())
+        if (sd(dsub$abundance, na.rm = TRUE) == 0) return(tibble())
+        if (dplyr::n_distinct(dsub$host_sex) < 2) return(tibble())
+        if (dplyr::n_distinct(dsub$group_general) < 2) return(tibble())
+
+        dsub <- dsub %>%
+          mutate(
+            host_sex = factor(host_sex, levels = c("female", "male")),
+            group_general = factor(group_general),
+            Authors = factor(Authors)
+          )
+
+        # Preferred: random intercept for study/source (Authors)
+        fit_lmer <- tryCatch(
+          lmerTest::lmer(
+            outcome ~ abundance * host_sex + abundance * group_general + (1 | Authors),
+            data = dsub,
+            REML = FALSE
+          ),
+          error = function(e) NULL
+        )
+
+        use_lm_fallback <- is.null(fit_lmer) || lme4::isSingular(fit_lmer, tol = 1e-4)
+        fit_engine <- ifelse(use_lm_fallback, "lm_fallback", "lmer_random_authors")
+
+        fit_final <- if (use_lm_fallback) {
+          tryCatch(
+            lm(outcome ~ abundance * host_sex + abundance * group_general + Authors, data = dsub),
+            error = function(e) NULL
+          )
+        } else {
+          fit_lmer
+        }
+
+        if (is.null(fit_final)) return(tibble())
+
+        coef_tbl <- as.data.frame(summary(fit_final)$coefficients) %>%
+          tibble::rownames_to_column("term") %>%
+          as_tibble()
+
+        if (!("Pr(>|t|)" %in% names(coef_tbl))) {
+          coef_tbl$`Pr(>|t|)` <- NA_real_
+        }
+
+        coef_tbl <- coef_tbl %>%
+          transmute(
+            term,
+            estimate = Estimate,
+            se = `Std. Error`,
+            t = `t value`,
+            pval = `Pr(>|t|)`
+          ) %>%
+          mutate(
+            term_type = case_when(
+              term == "abundance" ~ "main_abundance",
+              stringr::str_detect(term, "^abundance:host_sex") ~ "sex_interaction",
+              stringr::str_detect(term, "^abundance:group_general") ~ "treatment_interaction",
+              TRUE ~ "other"
+            )
+          ) %>%
+          filter(term_type != "other") %>%
+          mutate(
+            metric = dsub$metric[[1]],
+            TaxonID = dsub$TaxonID[[1]],
+            taxon_label = dsub$taxon_label[[1]],
+            n = nrow(dsub),
+            n_studies = dplyr::n_distinct(dsub$Authors),
+            fit_engine = fit_engine
+          )
+
+        coef_tbl
+      }) %>%
+      group_by(metric, term_type) %>%
+      mutate(padj = p.adjust(pval, method = "BH")) %>%
+      ungroup()
+
+    model_tbl
+  }
+
+  # ----- Run model for each taxa cutoff (top 25 and top 100) -----
+
+  d1_res_by_cutoff <- purrr::map(top_n_taxa_set, function(top_n_taxa) {
+    taxa_keep <- names(sort(tax_mean, decreasing = TRUE))[seq_len(min(top_n_taxa, length(tax_mean)))]
+
+    taxa_abund_long <- otu_rel[taxa_keep, , drop = FALSE] %>%
+      as.data.frame() %>%
+      tibble::rownames_to_column("TaxonID") %>%
+      tidyr::pivot_longer(-TaxonID, names_to = "SampleID", values_to = "abundance") %>%
+      left_join(
+        tax_df %>%
+          mutate(taxon_label = taxon_core) %>%
+          dplyr::select(TaxonID, taxon_label),
+        by = "TaxonID"
+      )
+
+    taxa_div_models_n <- fit_div_abd_models(alpha_df, taxa_abund_long) %>%
+      mutate(top_n_taxa = top_n_taxa, .before = 1)
+
+    taxa_div_sig_summary_n <- taxa_div_models_n %>%
+      mutate(sig = padj < 0.05) %>%
+      group_by(top_n_taxa, metric, term_type) %>%
+      summarise(
+        n_sig_taxa = sum(sig, na.rm = TRUE),
+        n_tested_taxa = n_distinct(TaxonID),
+        .groups = "drop"
+      )
+
+    top_interaction_taxa_n <- taxa_div_models_n %>%
+      filter(term_type %in% c("sex_interaction", "treatment_interaction")) %>%
+      mutate(
+        interaction_type = recode(
+          term_type,
+          sex_interaction = "Sex interaction",
+          treatment_interaction = "Treatment interaction"
+        ),
+        score = abs(t),
+        effect_signed = dplyr::if_else(is.finite(t), t, estimate),
+        direction = dplyr::if_else(effect_signed >= 0, "Positive", "Negative")
+      ) %>%
+      group_by(top_n_taxa, metric, interaction_type) %>%
+      arrange(desc(score), .by_group = TRUE) %>%
+      slice_head(n = top_k_interaction_taxa) %>%
+      ungroup() %>%
+      mutate(
+        sig_label = case_when(
+          padj < 0.001 ~ "***",
+          padj < 0.01 ~ "**",
+          padj < 0.05 ~ "*",
+          TRUE ~ ""
+        ),
+        taxon_plot = ifelse(
+          nchar(taxon_label) > 45,
+          paste0(substr(taxon_label, 1, 45), "..."),
+          taxon_label
+        )
+      )
+
+    list(
+      models = taxa_div_models_n,
+      summary = taxa_div_sig_summary_n,
+      top_interaction = top_interaction_taxa_n
+    )
+  })
+
+  taxa_div_models_all <- bind_rows(purrr::map(d1_res_by_cutoff, "models"))
+  taxa_div_sig_summary <- bind_rows(purrr::map(d1_res_by_cutoff, "summary"))
+  top_interaction_taxa <- bind_rows(purrr::map(d1_res_by_cutoff, "top_interaction"))
+
+  write.csv(taxa_div_models_all, here("results", "taxa_diversity_association_models.csv"), row.names = FALSE)
+  write.csv(taxa_div_sig_summary, here("results", "taxa_diversity_association_summary.csv"), row.names = FALSE)
+  write.csv(top_interaction_taxa, here("results", "taxa_diversity_top_interaction_taxa.csv"), row.names = FALSE)
+
+  fallback_summary <- taxa_div_models_all %>%
+    group_by(top_n_taxa, metric) %>%
+    summarise(
+      n_terms = n(),
+      n_lmer = sum(fit_engine == "lmer_random_authors", na.rm = TRUE),
+      n_lm_fallback = sum(fit_engine == "lm_fallback", na.rm = TRUE),
+      fallback_rate = ifelse(n_terms > 0, n_lm_fallback / n_terms, NA_real_),
+      .groups = "drop"
+    )
+
+  write.csv(fallback_summary, here("results", "taxa_diversity_fit_fallback_summary.csv"), row.names = FALSE)
+
+  # Also write explicit per-cutoff files for supplement export
+  purrr::walk(top_n_taxa_set, function(top_n) {
+    write.csv(
+      taxa_div_models_all %>% filter(top_n_taxa == top_n),
+      here("results", paste0("taxa_diversity_association_models_top", top_n, ".csv")),
+      row.names = FALSE
+    )
+
+    write.csv(
+      taxa_div_sig_summary %>% filter(top_n_taxa == top_n),
+      here("results", paste0("taxa_diversity_association_summary_top", top_n, ".csv")),
+      row.names = FALSE
+    )
+
+    write.csv(
+      top_interaction_taxa %>% filter(top_n_taxa == top_n),
+      here("results", paste0("taxa_diversity_top_interaction_taxa_top", top_n, ".csv")),
+      row.names = FALSE
+    )
+  })
+
+  } else {
+    required_plot_inputs <- c(
+      here("results", "taxa_diversity_association_summary.csv"),
+      here("results", "taxa_diversity_top_interaction_taxa.csv")
+    )
+    missing_plot_inputs <- required_plot_inputs[!file.exists(required_plot_inputs)]
+    if (length(missing_plot_inputs) > 0) {
+      stop(
+        paste0(
+          "D.1 plotting-only mode needs existing CSV outputs, but missing: ",
+          paste(basename(missing_plot_inputs), collapse = ", "),
+          ". Run once with run_d1_models = TRUE first."
+        )
+      )
+    }
+
+    taxa_div_sig_summary <- read.csv(here("results", "taxa_diversity_association_summary.csv"), stringsAsFactors = FALSE)
+    top_interaction_taxa <- read.csv(here("results", "taxa_diversity_top_interaction_taxa.csv"), stringsAsFactors = FALSE)
+  }
+
+  if (!"effect_signed" %in% names(top_interaction_taxa)) {
+    if ("t" %in% names(top_interaction_taxa)) {
+      top_interaction_taxa$effect_signed <- ifelse(
+        is.finite(top_interaction_taxa$t),
+        top_interaction_taxa$t,
+        top_interaction_taxa$estimate
+      )
+    } else {
+      top_interaction_taxa$effect_signed <- top_interaction_taxa$estimate
+    }
+  }
+  if (!"direction" %in% names(top_interaction_taxa)) {
+    top_interaction_taxa$direction <- ifelse(top_interaction_taxa$effect_signed >= 0, "Positive", "Negative")
+  }
+
+  if (run_d1_plots) {
+
+  plot_top_interactions <- function(df_in, title_txt, subtitle_txt, caption_txt = NULL) {
+    if (nrow(df_in) == 0) {
+      return(
+        ggplot() +
+          geom_blank() +
+          labs(title = title_txt, subtitle = "No interaction terms available") +
+          theme_void()
+      )
+    }
+
+    df_plot <- df_in %>%
+      mutate(
+        metric = factor(metric, levels = unique(metric)),
+        taxon_plot = reorder(taxon_plot, abs(effect_signed)),
+        direction = factor(direction, levels = c("Negative", "Positive"))
+      )
+
+    ggplot(df_plot, aes(x = effect_signed, y = taxon_plot, fill = direction)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey45") +
+      geom_col(width = 0.75) +
+      geom_text(
+        aes(
+          label = sig_label,
+          hjust = ifelse(effect_signed >= 0, -0.2, 1.2)
+        ),
+        size = 3
+      ) +
+      facet_grid(metric ~ ., scales = "free_y", space = "free") +
+      scale_fill_manual(values = c("Negative" = "#2166AC", "Positive" = "#B2182B")) +
+      labs(
+        title = title_txt,
+        subtitle = subtitle_txt,
+        x = "Signed association (t value; + positive, - negative)",
+        y = "Taxon",
+        fill = "Direction",
+        caption = caption_txt
+      ) +
+      theme_bw() +
+      theme(
+        strip.text.y = element_text(angle = 0),
+        axis.text.y = element_text(size = 8),
+        legend.position = "bottom",
+        plot.caption = element_text(hjust = 0, size = 8, color = "grey30")
+      )
+  }
+
+  interaction_name_to_file <- c(
+    "Sex interaction" = "sex",
+    "Treatment interaction" = "treatment"
+  )
+
+  top_interaction_plot_index <- top_interaction_taxa %>%
+    distinct(top_n_taxa, interaction_type) %>%
+    arrange(top_n_taxa, interaction_type) %>%
+    purrr::pmap_dfr(function(top_n_taxa, interaction_type) {
+      dsub <- top_interaction_taxa %>%
+        filter(top_n_taxa == !!top_n_taxa, interaction_type == !!interaction_type)
+
+      interaction_file_tag <- interaction_name_to_file[[interaction_type]]
+      file_name <- paste0("taxa_diversity_top_interaction_alpha_top", top_n_taxa, "_", interaction_file_tag, ".png")
+
+      p <- plot_top_interactions(
+        dsub,
+        title_txt = paste0("Top ", interaction_type, " Taxa Explaining Alpha Diversity"),
+        subtitle_txt = paste0("top_n_taxa = ", top_n_taxa, "; top ", top_k_interaction_taxa, " taxa per metric by |t| (bar direction shows sign)"),
+        caption_txt = ifelse(
+          interaction_type == "Sex interaction",
+          "Sex interaction uses female as reference: >0 means abundance-diversity slope is more positive in males than females; <0 means more positive in females than males.",
+          "Treatment interaction: >0 indicates a more positive abundance-diversity slope in treatment than control; <0 indicates more positive in control than treatment."
+        )
+      )
+
+      h <- max(6, 2.2 * dplyr::n_distinct(dsub$metric))
+      ggsave(here("results", file_name), p, width = 10, height = h, dpi = 300)
+
+      tibble(
+        top_n_taxa = top_n_taxa,
+        interaction_type = interaction_type,
+        plot_file = paste0("results/", file_name)
+      )
+    })
+
+  write.csv(top_interaction_plot_index, here("results", "taxa_diversity_top_interaction_plot_index.csv"), row.names = FALSE)
+
+  p_taxa_div_sig <- taxa_div_sig_summary %>%
+    mutate(term_type = factor(term_type, levels = c("main_abundance", "sex_interaction", "treatment_interaction"))) %>%
+    mutate(top_n_taxa = factor(top_n_taxa, levels = sort(unique(top_n_taxa)))) %>%
+    ggplot(aes(x = metric, y = n_sig_taxa, fill = term_type)) +
+    geom_col(position = "dodge") +
+    facet_wrap(~top_n_taxa, ncol = 1) +
+    labs(
+      title = "How Taxa Abundance Explains Alpha Diversity",
+      subtitle = "Significant taxa-association terms (BH-adjusted p < 0.05) for top 25 and top 100 taxa",
+      x = "Diversity metric",
+      y = "Number of significant taxa",
+      fill = "Model term"
+    ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1))
+
+  ggsave(here("results", "taxa_diversity_association_summary.png"), p_taxa_div_sig, width = 12, height = 9, dpi = 300)
+
+  p_taxa_div_sig
+  } else {
+    message("Phase D.1 plots skipped (run_d1_plots = FALSE).")
+  }
+}
+```
+
+## 9) Pipeline Outputs
+
+Expected output files generated by this notebook:
+
+- `results/alpha_es.csv`
+- `results/beta_es_lnRR.csv`
+- `results/alpha_metric_correlations.csv`
+- `results/beta_metric_correlations.csv`
+- `results/alpha_metric_scatter_pairs.png`
+- `results/beta_metric_scatter_pairs.png`
+- `results/alpha_meta_orchard_lnRR.png`
+- `results/alpha_meta_orchard_lnVR.png`
+- `results/alpha_meta_orchard_lnCVR.png`
+- `results/beta_meta_orchard_lnRR.png`
+- `results/alpha_meta_model_results.csv`
+- `results/beta_meta_model_results.csv`
+- `results/meta_metric_treatment_interaction_lrt.csv`
+- `results/alpha_meta_leave_one_out.csv`
+- `results/alpha_meta_leave_one_out_delta.csv`
+- `results/alpha_meta_leave_one_out_top_influential.csv`
+- `results/beta_meta_leave_one_out.csv`
+- `results/beta_meta_leave_one_out_delta.csv`
+- `results/beta_meta_leave_one_out_top_influential.csv`
+- `results/alpha_meta_loo_robustness.csv`
+- `results/beta_meta_loo_robustness.csv`
+- `results/meta_loo_robustness_alpha.png`
+- `results/meta_loo_robustness_beta.png`
+- `results/meta_leave_one_out_influence_alpha_lnrr.png`
+- `results/meta_leave_one_out_influence_alpha_lncvr.png`
+- `results/meta_leave_one_out_influence_alpha_lnvr.png`
+- `results/meta_leave_one_out_influence_beta_lnrr.png`
+- `results/meta_leave_one_out_plot_index.csv`
+- `results/res.all.combined.csv`
+- `results/res.all.combined.sig.csv`
+- `results/ancom.all.combined_sex.csv`
+- `results/ancom.all.combined.sig_sex.csv`
+- `results/both.sig_sex.csv`
+- `results/daa_significant_counts_by_study.csv`
+- `results/daa_significant_counts_by_study.png`
+- `results/taxa_diversity_association_models.csv`
+- `results/taxa_diversity_association_summary.csv`
+- `results/taxa_diversity_association_summary.png`
+- `results/taxa_diversity_top_interaction_taxa.csv`
+- `results/taxa_diversity_top_interaction_alpha_top*.png` *(separate plot for each top_n_taxa × interaction type)*
+- `results/taxa_diversity_top_interaction_plot_index.csv`
+- `results/taxa_diversity_fit_fallback_summary.csv`
+- `results/taxa_diversity_association_models_top*.csv` *(explicit file per top_n_taxa value, e.g., top25/top100)*
+- `results/taxa_diversity_association_summary_top*.csv` *(explicit file per top_n_taxa value)*
+- `results/taxa_diversity_top_interaction_taxa_top*.csv` *(explicit file per top_n_taxa value)*
+
+## 10) Figure Index
+
+This index lists all figure files generated by the pipeline.
+
+```{r figure-index}
+figure_index <- tibble::tribble(
+  ~phase, ~figure_name, ~path, ~description,
+  "Correlation", "Alpha metric scatter pairs", "results/alpha_metric_scatter_pairs.png", "Pairwise scatter plots for all C(6,2)=15 alpha metric combinations; red points = top-3 influential studies by Cook's D.",
+  "Correlation", "Beta metric scatter pairs", "results/beta_metric_scatter_pairs.png", "Pairwise scatter plots for all C(4,2)=6 beta metric combinations; red points = top-3 influential studies by Cook's D.",
+  "Meta-analysis", "Alpha orchard plot (lnRR)", "results/alpha_meta_orchard_lnRR.png", "Summary lnRR estimates across alpha metrics.",
+  "Meta-analysis", "Alpha orchard plot (lnVR)", "results/alpha_meta_orchard_lnVR.png", "Summary lnVR estimates across alpha metrics.",
+  "Meta-analysis", "Alpha orchard plot (lnCVR)", "results/alpha_meta_orchard_lnCVR.png", "Summary lnCVR estimates across alpha metrics.",
+  "Meta-analysis", "Beta orchard plot", "results/beta_meta_orchard_lnRR.png", "Summary lnRR estimates across beta metrics.",
+  "Sensitivity", "Alpha LOO robustness summary", "results/meta_loo_robustness_alpha.png", "Stacked bar showing how many studies flip direction or significance per alpha metric and ES type.",
+  "Sensitivity", "Beta LOO robustness summary", "results/meta_loo_robustness_beta.png", "Stacked bar showing how many studies flip direction or significance per beta metric.",
+  "Sensitivity", "Alpha LOO influence (lnRR)", "results/meta_leave_one_out_influence_alpha_lnrr.png", "LOO influence for alpha lnRR with all metrics faceted in one figure.",
+  "Sensitivity", "Alpha LOO influence (lnCVR)", "results/meta_leave_one_out_influence_alpha_lncvr.png", "LOO influence for alpha lnCVR with all metrics faceted in one figure.",
+  "Sensitivity", "Alpha LOO influence (lnVR)", "results/meta_leave_one_out_influence_alpha_lnvr.png", "LOO influence for alpha lnVR with all metrics faceted in one figure.",
+  "Sensitivity", "Beta LOO influence (lnRR)", "results/meta_leave_one_out_influence_beta_lnrr.png", "LOO influence for beta lnRR with all metrics faceted in one figure.",
+  "Sensitivity", "Leave-one-out influence plot index", "results/meta_leave_one_out_plot_index.csv", "Manifest of one LOO influence plot per effect-size type (alpha) and one for beta lnRR.",
+  "DAA", "Significant taxa counts by study", "results/daa_significant_counts_by_study.png", "Per-study significant taxa counts from ALDEx2 and ANCOM.",
+  "DAA", "Taxa-diversity association summary", "results/taxa_diversity_association_summary.png", "Significant taxa-abundance associations with alpha diversity for both top-25 and top-100 taxa settings, including sex and treatment interaction terms.",
+  "DAA", "Top interaction taxa plot index", "results/taxa_diversity_top_interaction_plot_index.csv", "Manifest of separate top-interaction taxa plots for each top_n_taxa setting and interaction type."
+)
+
+write.csv(figure_index, here("results", "figure_index.csv"), row.names = FALSE)
+figure_index
+```
+
+## 11) Table Index
+
+This index lists all table outputs generated by the pipeline.
+
+```{r table-index}
+table_index <- tibble::tribble(
+  ~phase, ~table_name, ~path, ~description,
+  "Meta input", "Alpha effect sizes", "results/alpha_es.csv", "Computed effect sizes for alpha diversity metrics.",
+  "Meta input", "Beta effect sizes", "results/beta_es_lnRR.csv", "Computed lnRR effect sizes for beta dispersion metrics.",
+  "Correlation", "Alpha metric correlation values", "results/alpha_metric_correlations.csv", "Pairwise Spearman rho values for alpha metrics.",
+  "Correlation", "Beta metric correlation values", "results/beta_metric_correlations.csv", "Pairwise Spearman rho values for beta metrics.",
+  "Meta-analysis", "Alpha meta model results", "results/alpha_meta_model_results.csv", "Model summary output for alpha meta-analysis across lnRR, lnVR and lnCVR.",
+  "Meta-analysis", "Beta meta model results", "results/beta_meta_model_results.csv", "Model summary output for beta meta-analysis.",
+  "Meta-analysis", "Metric-by-treatment interaction LRT", "results/meta_metric_treatment_interaction_lrt.csv", "Likelihood-ratio tests comparing models with vs without metric:group_general (treatment/control) interaction.",
+  "Sensitivity", "Alpha leave-one-out full table", "results/alpha_meta_leave_one_out.csv", "All alpha model coefficients from leave-one-out refits.",
+  "Sensitivity", "Alpha leave-one-out deltas", "results/alpha_meta_leave_one_out_delta.csv", "Alpha coefficient shifts relative to full model, with direction-flip and sig-change flags.",
+  "Sensitivity", "Alpha top influential leave-outs", "results/alpha_meta_leave_one_out_top_influential.csv", "Largest alpha coefficient shifts by left-out study.",
+  "Sensitivity", "Alpha LOO robustness counts", "results/alpha_meta_loo_robustness.csv", "Per-metric count of studies causing stable/flip/sig-change outcomes for alpha.",
+  "Sensitivity", "Beta leave-one-out full table", "results/beta_meta_leave_one_out.csv", "All beta model coefficients from leave-one-out refits.",
+  "Sensitivity", "Beta leave-one-out deltas", "results/beta_meta_leave_one_out_delta.csv", "Beta coefficient shifts relative to full model, with direction-flip and sig-change flags.",
+  "Sensitivity", "Beta top influential leave-outs", "results/beta_meta_leave_one_out_top_influential.csv", "Largest beta coefficient shifts by left-out study.",
+  "Sensitivity", "Beta LOO robustness counts", "results/beta_meta_loo_robustness.csv", "Per-metric count of studies causing stable/flip/sig-change outcomes for beta.",
+  "DAA", "ALDEx2 combined results", "results/res.all.combined.csv", "All ALDEx2 differential abundance results.",
+  "DAA", "ALDEx2 significant results", "results/res.all.combined.sig.csv", "ALDEx2 significant taxa only.",
+  "DAA", "ANCOM combined results", "results/ancom.all.combined_sex.csv", "All ANCOM differential abundance results.",
+  "DAA", "ANCOM significant results", "results/ancom.all.combined.sig_sex.csv", "ANCOM significant taxa only.",
+  "DAA", "Overlap significant taxa", "results/both.sig_sex.csv", "Taxa significant in both ALDEx2 and ANCOM.",
+  "DAA", "Significant counts by study", "results/daa_significant_counts_by_study.csv", "Per-study count of significant taxa by method.",
+  "DAA", "Taxa-diversity association models", "results/taxa_diversity_association_models.csv", "Per-taxon linear models of diversity ~ abundance with sex and treatment interaction terms.",
+  "DAA", "Taxa-diversity association summary", "results/taxa_diversity_association_summary.csv", "Count of significant taxa-association terms by alpha diversity metric for top-25 and top-100 taxa settings.",
+  "DAA", "Top interaction taxa table", "results/taxa_diversity_top_interaction_taxa.csv", "Top taxa per metric for sex- and treatment-interaction terms (ranked by |t|) for top-25 and top-100 taxa settings.",
+  "DAA", "Top interaction taxa plot index", "results/taxa_diversity_top_interaction_plot_index.csv", "Manifest of separate top-interaction plots by top_n_taxa and interaction type.",
+  "DAA", "Mixed-model fallback summary", "results/taxa_diversity_fit_fallback_summary.csv", "Counts and rates of lmer-to-lm fallback by alpha metric and top_n_taxa setting.",
+  "DAA", "Taxa-diversity models by top_n", "results/taxa_diversity_association_models_top*.csv", "Explicit per-top_n_taxa files for taxa-diversity association models (e.g., top25, top100, etc.).",
+  "DAA", "Taxa-diversity summary by top_n", "results/taxa_diversity_association_summary_top*.csv", "Explicit per-top_n_taxa files for summary counts.",
+  "DAA", "Top interaction taxa by top_n", "results/taxa_diversity_top_interaction_taxa_top*.csv", "Explicit per-top_n_taxa files for top interaction taxa tables.",
+  "Index", "Figure index", "results/figure_index.csv", "Manifest of all generated figures."
+)
+
+write.csv(table_index, here("results", "table_index.csv"), row.names = FALSE)
+table_index
+```

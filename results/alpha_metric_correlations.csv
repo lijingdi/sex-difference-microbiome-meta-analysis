@@ -1,0 +1,37 @@
+"metric_1","metric_2","rho"
+"Richness","Richness",1
+"Chao1","Richness",0.943139976085134
+"Evenness","Richness",0.0507015067558697
+"Shannon","Richness",0.756851723469538
+"Simpson","Richness",0.673631026900253
+"Faith's PD","Richness",0.975907251287466
+"Richness","Chao1",0.943139976085134
+"Chao1","Chao1",1
+"Evenness","Chao1",0.084253025914386
+"Shannon","Chao1",0.759636354115173
+"Simpson","Chao1",0.670729897792137
+"Faith's PD","Chao1",0.935205319538546
+"Richness","Evenness",0.0507015067558697
+"Chao1","Evenness",0.084253025914386
+"Evenness","Evenness",1
+"Shannon","Evenness",0.48351974463522
+"Simpson","Evenness",0.553336076509682
+"Faith's PD","Evenness",0.219236403589086
+"Richness","Shannon",0.756851723469538
+"Chao1","Shannon",0.759636354115173
+"Evenness","Shannon",0.48351974463522
+"Shannon","Shannon",1
+"Simpson","Shannon",0.975301437673787
+"Faith's PD","Shannon",0.738892830983336
+"Richness","Simpson",0.673631026900253
+"Chao1","Simpson",0.670729897792137
+"Evenness","Simpson",0.553336076509682
+"Shannon","Simpson",0.975301437673787
+"Simpson","Simpson",1
+"Faith's PD","Simpson",0.666098242080205
+"Richness","Faith's PD",0.975907251287466
+"Chao1","Faith's PD",0.935205319538546
+"Evenness","Faith's PD",0.219236403589086
+"Shannon","Faith's PD",0.738892830983336
+"Simpson","Faith's PD",0.666098242080205
+"Faith's PD","Faith's PD",1

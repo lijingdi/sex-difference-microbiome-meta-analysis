@@ -1,0 +1,208 @@
+---
+title: "sexdiff_differential_species_analysis"
+author: "Judy (Jingdi) Li"
+date: "2026-03-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r load-packages}
+pacman::p_load(
+  phyloseq,
+  tidyr,
+  qiime2R,
+  vegan,
+  ggplot2,
+  picante,
+  dplyr,
+  tibble,
+  tidyverse,
+  ggpubr,
+  rstatix,
+  reshape2,
+  here,
+  cli,
+  ALDEx2,
+  ANCOMBC,
+  microbiome,
+  stringr
+)
+```
+
+```{r custom-functions}
+source(here("R_new", "toolbox.R"))
+```
+
+```{r load-data}
+load(here("data", "newest_SRS.RData"))
+
+if (!exists("dat33")) {
+  dat33 <- qza_to_phyloseq(
+    features = here("data", "table_filt_decomtam33_V4.qza"),
+    tree = here("data", "asvs-tree_V4.qza"),
+    taxonomy = here("data", "classification.qza"),
+    metadata = here("data", "metadata_dat33.txt")
+  )
+}
+```
+
+```{r select-study}
+study <- "Gubert et al. 2022"
+
+sub <- subset_samples(dat33, Authors == study)
+sub <- subset_samples(sub, !(tissue %in% c("skin", "nose", "ear")))
+
+sample_data_df <- data.frame(sample_data(sub))
+
+sample_data_df <- sample_data_df %>%
+  mutate(
+    group_general = case_when(
+      experimental_treatment_raw == "Water-T0" ~ "control",
+      Authors == "Velasco et al. 2021" & strain == "C57BL/6J" ~ "control",
+      TRUE ~ experimental_treatment_raw
+    )
+  )
+
+sample_data(sub) <- sample_data(sample_data_df)
+group_list <- unique(sample_data_df$group_general)
+```
+
+```{r run-aldex2}
+set.seed(520)
+
+res_all <- list()
+
+for (group in group_list) {
+  tb <- subset_samples(sub, group_general == group)
+  sample_df <- data.frame(sample_data(tb))
+
+  valid_group <-
+    length(unique(sample_df$host_sex)) > 1 &&
+    sum(sample_df$host_sex == "male") > 1 &&
+    sum(sample_df$host_sex == "female") > 1
+
+  if (!valid_group) {
+    message("Skipping ALDEx2 for ", group, " (insufficient male/female samples).")
+    next
+  }
+
+  d_x <- aldex.clr(as.data.frame(otu_table(tb)), conds = sample_data(tb)$host_sex, mc.samples = 128)
+  d_eff <- aldex.effect(d_x)
+  d_tt <- aldex.ttest(d_x)
+
+  res <- data.frame(d_eff, d_tt)
+  taxa <- tibble::rownames_to_column(as.data.frame(tax_table(tb)), var = "Row.names")
+
+  res_taxa <- merge(taxa, res, by = "Row.names") %>%
+    mutate(
+      Group = group,
+      Study = study,
+      direct = case_when(
+        effect > 0 ~ "Positive",
+        effect <= 0 ~ "Negative",
+        TRUE ~ "NA"
+      )
+    )
+
+  res_all[[group]] <- res_taxa
+}
+
+res.all <- dplyr::bind_rows(res_all)
+res.all.sig <- res.all %>% filter(wi.eBH < 0.05)
+
+write.csv(res.all, here("results", "res.all.combined.csv"), row.names = FALSE)
+write.csv(res.all.sig, here("results", "res.all.combined.sig.csv"), row.names = FALSE)
+```
+
+```{r run-ancom}
+ancom_all <- list()
+
+for (group in group_list) {
+  tb <- subset_samples(sub, group_general == group)
+  sample_df <- data.frame(sample_data(tb))
+
+  valid_group <-
+    length(unique(sample_df$host_sex)) > 1 &&
+    sum(sample_df$host_sex == "male") > 1 &&
+    sum(sample_df$host_sex == "female") > 1
+
+  if (!valid_group) {
+    message("Skipping ANCOM for ", group, " (insufficient male/female samples).")
+    next
+  }
+
+  rel_abun <- transform_sample_counts(tb, function(x) x / sum(x))
+  remove_low_abun <- filter_taxa(rel_abun, function(x) max(x) > 0.001, TRUE)
+  tb <- filter_taxa(remove_low_abun, function(x) stats::var(x) > 1e-06, TRUE)
+
+  out <- ANCOMBC::ancom(
+    data = tb,
+    meta_data = sample_df,
+    p_adj_method = "BH",
+    prv_cut = 0.10,
+    lib_cut = min(sample_sums(tb)),
+    main_var = "host_sex",
+    alpha = 0.05,
+    n_cl = 1
+  )
+
+  res <- out$res
+  q_val <- out$q_data
+  beta_val <- out$beta_data
+
+  beta_val <- beta_val * (q_val < 0.05)
+  beta_pos <- apply(abs(beta_val), 2, which.max)
+  beta_max <- vapply(seq_along(beta_pos), function(i) beta_val[beta_pos[i], i], FUN.VALUE = double(1))
+
+  n_taxa <- ifelse(
+    is.null(out$zero_ind),
+    nrow(otu_table(tb)),
+    sum(apply(out$zero_ind[, -1, drop = FALSE], 1, sum) == 0)
+  )
+
+  df_w <- res %>%
+    mutate(
+      beta = beta_max,
+      direct = case_when(
+        detected_0.7 & beta > 0 ~ "Positive",
+        detected_0.7 & beta <= 0 ~ "Negative",
+        TRUE ~ "Not Significant"
+      )
+    ) %>%
+    arrange(W)
+
+  taxa <- tibble::rownames_to_column(as.data.frame(tax_table(tb)), var = "Row.names")
+  df_w_taxa <- merge(taxa, df_w, by = "Row.names") %>%
+    mutate(group = group, Study = study)
+
+  df_w_taxa$W <- replace(df_w_taxa$W, is.infinite(df_w_taxa$W), n_taxa - 1)
+  df_w_taxa$direct <- factor(df_w_taxa$direct, levels = c("Negative", "Positive", "Not Significant"))
+
+  ancom_all[[group]] <- df_w_taxa
+}
+
+ancom.all2 <- dplyr::bind_rows(ancom_all)
+ancom.all.sig2 <- ancom.all2 %>% filter(direct %in% c("Positive", "Negative"))
+
+write.csv(ancom.all2, here("results", "ancom.all.combined_sex.csv"), row.names = FALSE)
+write.csv(ancom.all.sig2, here("results", "ancom.all.combined.sig_sex.csv"), row.names = FALSE)
+```
+
+```{r overlap-results}
+if (nrow(res.all.sig) > 0 && nrow(ancom.all.sig2) > 0) {
+  res.all.sig$id <- paste(res.all.sig$Group, res.all.sig$Study, res.all.sig$direct, sep = "_")
+  ancom.all.sig2$id <- paste(ancom.all.sig2$group, ancom.all.sig2$Study, ancom.all.sig2$direct, sep = "_")
+
+  common_ids <- intersect(res.all.sig$id, ancom.all.sig2$id)
+  matching_rows_A <- res.all.sig[res.all.sig$id %in% common_ids, ]$Row.names
+  matching_rows_B <- ancom.all.sig2[ancom.all.sig2$id %in% common_ids, ]$Row.names
+
+  overlap <- intersect(matching_rows_A, matching_rows_B)
+  both.sig2 <- res.all.sig[res.all.sig$Row.names %in% overlap, ]
+
+  write.csv(both.sig2, here("results", "both.sig_sex.csv"), row.names = FALSE)
+}
+```

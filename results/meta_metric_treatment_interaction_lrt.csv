@@ -1,0 +1,5 @@
+"domain","stats","n_rows","n_studies","n_metrics","n_groups","lrt","pval","interaction_sig","status"
+"alpha","lnCVR",639,22,6,2,4.598821584662,0.466771295329106,FALSE,"ok"
+"alpha","lnVR",639,22,6,2,4.39124195700833,0.494565394412234,FALSE,"ok"
+"alpha","lnRR",642,22,6,2,0,1,FALSE,"ok"
+"beta","lnRR",504,22,4,27,119.925300366927,0.00161515966629912,TRUE,"ok"

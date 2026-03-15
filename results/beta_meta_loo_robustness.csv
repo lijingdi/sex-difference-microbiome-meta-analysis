@@ -1,0 +1,17 @@
+"term","robustness","n_studies"
+"Bray-Curtis","Stable",18
+"Bray-Curtis","Sig. change only",0
+"Bray-Curtis","Direction flip only",4
+"Bray-Curtis","Flip + sig. change",0
+"Jaccard","Stable",15
+"Jaccard","Sig. change only",0
+"Jaccard","Direction flip only",7
+"Jaccard","Flip + sig. change",0
+"Unweighted Unifrac","Stable",17
+"Unweighted Unifrac","Sig. change only",0
+"Unweighted Unifrac","Direction flip only",5
+"Unweighted Unifrac","Flip + sig. change",0
+"Weighted Unifrac","Stable",22
+"Weighted Unifrac","Sig. change only",0
+"Weighted Unifrac","Direction flip only",0
+"Weighted Unifrac","Flip + sig. change",0

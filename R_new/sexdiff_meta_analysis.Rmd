@@ -1,0 +1,295 @@
+---
+title: "Microbiome meta-analysis for sex differences in mice"
+author: "Judy (Jingdi) Li"
+date: "2026-03-14"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r load-packages}
+pacman::p_load(
+  phyloseq,
+  tidyr,
+  qiime2R,
+  vegan,
+  ggplot2,
+  picante,
+  dplyr,
+  tibble,
+  tidyverse,
+  ggpubr,
+  rstatix,
+  esc,
+  effectsize,
+  SRS,
+  reshape2,
+  here,
+  metaAidR,
+  metafor,
+  patchwork,
+  R.rsp,
+  orchaRd,
+  emmeans,
+  ape,
+  phytools,
+  flextable,
+  cli,
+  stringr
+)
+```
+
+```{r custom-functions}
+source(here("R_new", "toolbox.R"))
+```
+
+```{r load-data}
+load(here("data", "newest_SRS.RData"))
+
+if (!exists("dat33")) {
+  dat33 <- qza_to_phyloseq(
+    features = here("data", "table_filt_decomtam33_V4.qza"),
+    tree = here("data", "asvs-tree_V4.qza"),
+    taxonomy = here("data", "classification.qza"),
+    metadata = here("data", "metadata_dat33.txt")
+  )
+}
+```
+
+```{r study-mapping}
+study_group_map <- tribble(
+  ~Authors, ~group_var,
+  "Ellis et al. 2021", "sample_name",
+  "Lindheim et al. 2018", "study_accession",
+  "Pizarro et al. 2021", "experimental_treatment_raw",
+  "Lyte et al. 2022", "host_diet",
+  "Zou et al. 2021", "experimental_treatment_raw",
+  "Song et al. 2021", "experimental_treatment_raw",
+  "Velasco et al. 2021", "strain",
+  "Li et al. 2020", "experimental_treatment_raw",
+  "Son et al. 2019", "experimental_treatment_raw",
+  "Cheema & Pluznick 2019", "experimental_treatment",
+  "Zajac et al. 2022", "experimental_treatment_raw",
+  "Sun et al. 2020", "experimental_treatment_raw",
+  "Kozik et al. 2019", "experimental_treatment_raw",
+  "Tam et al. 2020", "experimental_treatment_raw",
+  "Ramakrishna et al. 2020", "experimental_treatment",
+  "Song et al. 2020", "experimental_treatment_raw",
+  "Ibrahim et al. 2019", "experimental_treatment_raw",
+  "Strickland et al. 2021", "experimental_treatment",
+  "Weng et al. 2019", "experimental_treatment_raw",
+  "Wolfe et al. 2020", "experimental_treatment_raw",
+  "Tashiro et al. 2020", "experimental_treatment_raw",
+  "Song et al. 2022", "experimental_treatment",
+  "Gubert et al. 2022", "experimental_treatment_raw"
+)
+```
+
+```{r inspect-study-balance}
+inspect_one_study <- function(phy, study_name, group_var) {
+  sub <- subset_samples(phy, Authors == study_name)
+  sdf <- data.frame(sample_data(sub))
+
+  if (!group_var %in% names(sdf)) {
+    return(tibble(Authors = study_name, group_var = group_var, subgroup = NA_character_, host_sex = NA_character_, n = 0))
+  }
+
+  sdf %>%
+    group_by(subgroup = .data[[group_var]], host_sex) %>%
+    summarise(n = dplyr::n(), .groups = "drop") %>%
+    mutate(Authors = study_name, group_var = group_var, .before = 1)
+}
+
+study_balance <- purrr::pmap_dfr(study_group_map, function(Authors, group_var) {
+  inspect_one_study(dat33, Authors, group_var)
+})
+
+study_balance
+```
+
+```{r alpha-beta-calc-single-study}
+# Example run on one study for reproducibility and debugging
+study <- "Gubert et al. 2022"
+group <- "experimental_treatment_raw"
+
+sub <- subset_samples(dat33, Authors == study)
+sub <- subset_samples(sub, !(tissue %in% c("skin", "nose", "ear")))
+
+sample_data_df <- data.frame(sample_data(sub))
+stopifnot(group %in% names(sample_data_df))
+
+dat_alpha <- tibble()
+tb_all <- tibble()
+
+for (subgroup in unique(sample_data_df[[group]])) {
+  sub_sub <- subset_samples(sub, get(group) == subgroup)
+  sub_sub <- subset_samples(sub_sub, !(tissue %in% c("skin", "nose", "ear")))
+
+  if (nsamples(sub_sub) < 2) next
+
+  raremin <- min(sample_sums(sub_sub))
+
+  otu <- tibble::rownames_to_column(as.data.frame(otu_table(sub_sub)), "Row")
+  rownames(otu) <- otu$Row
+  otu$Row <- NULL
+
+  otu.srs <- SRS(otu, Cmin = raremin)
+  rownames(otu.srs) <- rownames(otu)
+  otu.srs <- otu_table(as.matrix(otu.srs), taxa_are_rows = TRUE)
+
+  sub_srs <- merge_phyloseq(phyloseq(otu.srs, sample_data(sub_sub), tax_table(sub_sub), phy_tree(sub_sub)))
+
+  PD_value <- tryCatch(
+    picante::pd(samp = data.frame(t(data.frame(phyloseq::otu_table(sub_srs)))), tree = phy_tree(sub_srs))[, 1],
+    error = function(e) rep(NA_real_, nsamples(sub_srs))
+  )
+
+  sub_alpha <- data.frame(
+    Observed = phyloseq::estimate_richness(sub_srs, measures = "Observed"),
+    Chao1 = phyloseq::estimate_richness(sub_srs, measures = "Chao1"),
+    Shannon = phyloseq::estimate_richness(sub_srs, measures = "Shannon"),
+    Simpson = phyloseq::estimate_richness(sub_srs, measures = "Simpson"),
+    PD = PD_value,
+    Sex = phyloseq::sample_data(sub_srs)$host_sex,
+    subgroup = phyloseq::sample_data(sub_srs)[[group]],
+    Authors = phyloseq::sample_data(sub_srs)$Authors,
+    Protocol = phyloseq::sample_data(sub_srs)$Protocol,
+    tissue = phyloseq::sample_data(sub_srs)$tissue
+  )
+
+  sub_alpha$Evenness <- sub_alpha$Shannon / log(sub_alpha$Observed)
+  dat_alpha <- bind_rows(dat_alpha, sub_alpha)
+
+  sample_data_df_sub <- data.frame(sample_data(sub_sub))
+  n_male <- sum(sample_data_df_sub$host_sex == "male")
+  n_female <- sum(sample_data_df_sub$host_sex == "female")
+
+  if (n_male < 2 || n_female < 2) next
+
+  dist_list <- list(
+    unifrac_dist = phyloseq::distance(sub_sub, method = "unifrac", weighted = FALSE),
+    wunifrac_dist = phyloseq::distance(sub_sub, method = "unifrac", weighted = TRUE),
+    bray_dist = phyloseq::distance(sub_sub, method = "bray"),
+    jac_dist = phyloseq::distance(sub_sub, method = "jaccard")
+  )
+
+  for (dist_name in names(dist_list)) {
+    beta_disp <- betadisper(dist_list[[dist_name]], sample_data_df_sub$host_sex)
+    sd_dispersion <- tapply(beta_disp$distances, sample_data_df_sub$host_sex, sd)
+
+    tb <- tibble(
+      Sex = rownames(beta_disp$group.distances),
+      distance = as.numeric(beta_disp$group.distances),
+      sd = as.numeric(sd_dispersion),
+      metric = dist_name,
+      Authors = study,
+      subgroup = subgroup,
+      n_male = n_male,
+      n_female = n_female
+    )
+
+    tb_all <- bind_rows(tb_all, tb)
+  }
+}
+```
+
+```{r alpha-es}
+dat_alpha <- dat_alpha %>% filter(!tissue %in% c("skin", "nose", "ear"))
+
+dat_alpha_long <- tidyr::pivot_longer(
+  dat_alpha,
+  cols = c(Observed, Chao1, Shannon, Simpson, PD, Evenness),
+  names_to = "metric",
+  values_to = "value"
+)
+
+dat_alpha_group <- dat_alpha_long %>%
+  group_by(across(all_of(c("Authors", "subgroup", "Sex", "metric")))) %>%
+  summarise(mean = mean(value, na.rm = TRUE), sd = sd(value, na.rm = TRUE), n = dplyr::n(), .groups = "drop") %>%
+  pivot_wider(names_from = Sex, values_from = c(mean, sd, n))
+
+mod <- c("Authors", "metric", "subgroup")
+alpha_es <- calculate_ES(dat_alpha_group, mod) %>%
+  mutate(
+    Protocol = str_extract(Authors, "^[^ ]+"),
+    metric = str_replace(metric, "Observed", "Richness"),
+    metric = str_replace(metric, "PD", "Faith's PD")
+  )
+
+alpha_es[sapply(alpha_es, is.numeric)] <- lapply(
+  alpha_es[sapply(alpha_es, is.numeric)],
+  function(x) replace(x, is.infinite(x), NA)
+)
+
+alpha_es$metric <- factor(alpha_es$metric, levels = c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+alpha_es$stats <- factor(alpha_es$stats, levels = c("lnRR", "lnCVR", "lnVR"))
+alpha_es$obs <- seq_len(nrow(alpha_es))
+
+write.csv(alpha_es, here("results", "alpha_es.csv"), row.names = FALSE)
+```
+
+```{r beta-es}
+mod <- c("Authors", "metric", "subgroup")
+
+tb_all_long <- tb_all %>%
+  pivot_wider(names_from = Sex, values_from = c(distance, sd)) %>%
+  rename(
+    mean_male = distance_male,
+    mean_female = distance_female,
+    sd_male = sd_male,
+    sd_female = sd_female
+  )
+
+tb_all_long_fil <- tb_all_long %>% filter(n_male != 0, n_female != 0)
+
+beta_es <- lnRR2(
+  tb_all_long_fil[mod],
+  tb_all_long_fil$mean_male,
+  tb_all_long_fil$sd_male,
+  tb_all_long_fil$n_male,
+  tb_all_long_fil$mean_female,
+  tb_all_long_fil$sd_female,
+  tb_all_long_fil$n_female
+) %>%
+  mutate(
+    Protocol = str_extract(Authors, "^[^ ]+"),
+    metric = str_replace(metric, "wunifrac_dist", "Weighted Unifrac"),
+    metric = str_replace(metric, "unifrac_dist", "Unweighted Unifrac"),
+    metric = str_replace(metric, "bray_dist", "Bray-Curtis"),
+    metric = str_replace(metric, "jac_dist", "Jaccard")
+  )
+
+beta_es$metric <- factor(beta_es$metric, levels = c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+beta_es$obs <- seq_len(nrow(beta_es))
+
+write.csv(beta_es, here("results", "beta_es_lnRR.csv"), row.names = FALSE)
+```
+
+```{r meta-models}
+fit_alpha_lnrr <- rma.mv(
+  yi,
+  vi,
+  random = list(~1 | Authors/subgroup, ~1 | obs),
+  mod = ~metric - 1,
+  data = alpha_es %>% filter(stats == "lnRR"),
+  test = "t",
+  method = "REML",
+  sparse = TRUE
+)
+
+fit_beta_lnrr <- rma.mv(
+  yi,
+  vi,
+  random = list(~1 | Authors/subgroup, ~1 | obs),
+  mod = ~metric - 1,
+  data = beta_es,
+  test = "t",
+  method = "REML",
+  sparse = TRUE
+)
+
+orchaRd::mod_results(fit_alpha_lnrr, mod = "metric", group = "Authors")
+orchaRd::mod_results(fit_beta_lnrr, mod = "metric", group = "Authors")
+```

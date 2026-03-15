@@ -1,0 +1,17 @@
+"metric_1","metric_2","rho"
+"Unweighted UniFrac","Unweighted UniFrac",1
+"Weighted UniFrac","Unweighted UniFrac",0.260916123796396
+"Bray-Curtis","Unweighted UniFrac",0.373087014035278
+"Jaccard","Unweighted UniFrac",0.402985774284136
+"Unweighted UniFrac","Weighted UniFrac",0.260916123796396
+"Weighted UniFrac","Weighted UniFrac",1
+"Bray-Curtis","Weighted UniFrac",0.443027553443485
+"Jaccard","Weighted UniFrac",0.423640968772569
+"Unweighted UniFrac","Bray-Curtis",0.373087014035278
+"Weighted UniFrac","Bray-Curtis",0.443027553443485
+"Bray-Curtis","Bray-Curtis",1
+"Jaccard","Bray-Curtis",0.977768565137841
+"Unweighted UniFrac","Jaccard",0.402985774284136
+"Weighted UniFrac","Jaccard",0.423640968772569
+"Bray-Curtis","Jaccard",0.977768565137841
+"Jaccard","Jaccard",1

@@ -1047,3 +1047,4 @@ p1 <- orchaRd::orchard_plot(fit_ho, mod = "metric", group = "Authors", xlab = "l
 anova(fit_ho, fit_he) 
 
 ```
+

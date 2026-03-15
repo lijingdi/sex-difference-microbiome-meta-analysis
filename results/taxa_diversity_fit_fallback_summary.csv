@@ -1,0 +1,13 @@
+"top_n_taxa","metric","n_terms","n_lmer","n_lm_fallback","fallback_rate"
+25,"Chao1",75,75,0,0
+25,"Evenness",75,75,0,0
+25,"Observed",75,75,0,0
+25,"PD",75,75,0,0
+25,"Shannon",75,75,0,0
+25,"Simpson",75,75,0,0
+100,"Chao1",294,294,0,0
+100,"Evenness",294,294,0,0
+100,"Observed",294,294,0,0
+100,"PD",294,294,0,0
+100,"Shannon",294,294,0,0
+100,"Simpson",294,294,0,0
