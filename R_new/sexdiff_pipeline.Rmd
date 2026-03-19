@@ -45,6 +45,13 @@ run_loo_plots <- TRUE
 run_daa_models <- TRUE
 run_daa_plots <- TRUE
 
+# Effect size threshold for ALDEx2 significance filtering (adjustable)
+# This filters taxa based on both adjusted p-value AND effect size magnitude
+aldex_effect_size_threshold <- 1.0  # Typical range: 0.5-2.0 (log-scale effect size)
+# Interpretation:
+#   0.5 = medium effect size (less stringent filtering)
+#   1.0 = large effect size (moderate filtering) - DEFAULT
+#   2.0 = very large effect size (stringent filtering)
 
 # Set TRUE to process all studies in map; set FALSE to run only one study.
 run_all_studies <- TRUE
@@ -577,6 +584,114 @@ if (run_meta_phase) {
   run_meta_plots <- isTRUE(run_meta_plots)
   meta_fit_file <- here("results", "meta_model_fits.rds")
 
+  fit_meta_model_best <- function(data_in, mod_formula) {
+    fit_homo <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = mod_formula,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    fit_hetero <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~metric | obs),
+        mod = mod_formula,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    aic_homo <- if (is.null(fit_homo)) NA_real_ else tryCatch(as.numeric(AIC(fit_homo)), error = function(e) NA_real_)
+    aic_hetero <- if (is.null(fit_hetero)) NA_real_ else tryCatch(as.numeric(AIC(fit_hetero)), error = function(e) NA_real_)
+
+    if (is.null(fit_homo) && is.null(fit_hetero)) {
+      return(NULL)
+    }
+
+    use_hetero <- !is.null(fit_hetero) && (is.null(fit_homo) || (!is.na(aic_hetero) && (is.na(aic_homo) || aic_hetero < aic_homo)))
+
+    list(
+      fit = if (use_hetero) fit_hetero else fit_homo,
+      best_random = if (use_hetero) "heteroscedastic_metric_obs" else "homoscedastic_obs",
+      random_obs = if (use_hetero) ~metric | obs else ~1 | obs,
+      aic_homo = aic_homo,
+      aic_hetero = aic_hetero
+    )
+  }
+
+  # Extract per-metric coefficient table from an rma.mv fit as a flat tibble.
+  extract_model_coef <- function(fit_obj, domain_label, stats_label) {
+    b_mat <- as.matrix(fit_obj$b)
+    term_names <- rownames(b_mat)
+    if (is.null(term_names)) term_names <- paste0("V", seq_len(nrow(b_mat)))
+    tibble(
+      domain    = domain_label,
+      stats     = stats_label,
+      term      = term_names,
+      metric    = gsub("^metric", "", term_names),
+      estimate  = as.numeric(b_mat[, 1]),
+      se        = as.numeric(fit_obj$se),
+      ci_lb     = as.numeric(fit_obj$ci.lb),
+      ci_ub     = as.numeric(fit_obj$ci.ub),
+      pval      = as.numeric(fit_obj$pval),
+      tval      = as.numeric(fit_obj$zval)
+    )
+  }
+
+  # Plot orchard with a single panel, using different shapes/colours per level of by_col.
+  # Internally fits ~metric * by_col - 1 for the visualization; falls back to a plain
+  # orchard (no by) if the interaction model fails or by_col has < 2 levels.
+  plot_orchard_by_moderator <- function(data_in, by_col, xlab_text, output_file) {
+    dat_viz <- data_in %>%
+      dplyr::filter(!is.na(.data[[by_col]]), is.finite(yi), is.finite(vi), vi > 0)
+
+    fit_base_best <- fit_meta_model_best(dat_viz, ~metric - 1)
+    if (is.null(fit_base_best)) return(NULL)
+
+    if (dplyr::n_distinct(dat_viz[[by_col]]) < 2) {
+      p <- orchaRd::orchard_plot(fit_base_best$fit, mod = "metric",
+                                  group = "Authors", xlab = xlab_text)
+      ggsave(here("results", output_file), p, width = 10, height = 7, dpi = 300)
+      return(p)
+    }
+
+    mod_formula_interact <- as.formula(paste0("~metric * ", by_col, " - 1"))
+    fit_viz <- tryCatch(
+      rma.mv(
+        yi, vi,
+        random = list(~1 | Authors/subgroup, fit_base_best$random_obs),
+        mod = mod_formula_interact,
+        data = dat_viz,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(fit_viz)) {
+      p <- orchaRd::orchard_plot(fit_base_best$fit, mod = "metric",
+                                  group = "Authors", xlab = xlab_text)
+    } else {
+      p <- orchaRd::orchard_plot(fit_viz, mod = "metric", by = by_col,
+                                  group = "Authors", xlab = xlab_text)
+    }
+    ggsave(here("results", output_file), p, width = 10, height = 7, dpi = 300)
+    p
+  }
+
   run_interaction_lrt <- function(data_in, domain_label, stats_label) {
     dat_lrt <- data_in %>%
       filter(
@@ -609,11 +724,16 @@ if (run_meta_phase) {
       return(base_row %>% mutate(status = "insufficient_data"))
     }
 
+    fit_with_inter_best <- fit_meta_model_best(dat_lrt, ~metric * group_general - 1)
+    if (is.null(fit_with_inter_best)) {
+      return(base_row %>% mutate(status = "model_fit_failed"))
+    }
+
     fit_no_inter <- tryCatch(
       rma.mv(
         yi,
         vi,
-        random = list(~1 | Authors/subgroup, ~1 | obs),
+        random = list(~1 | Authors/subgroup, fit_with_inter_best$random_obs),
         mod = ~metric + group_general - 1,
         data = dat_lrt,
         test = "t",
@@ -623,19 +743,7 @@ if (run_meta_phase) {
       error = function(e) NULL
     )
 
-    fit_with_inter <- tryCatch(
-      rma.mv(
-        yi,
-        vi,
-        random = list(~1 | Authors/subgroup, ~1 | obs),
-        mod = ~metric * group_general - 1,
-        data = dat_lrt,
-        test = "t",
-        method = "REML",
-        sparse = TRUE
-      ),
-      error = function(e) NULL
-    )
+    fit_with_inter <- fit_with_inter_best$fit
 
     if (is.null(fit_no_inter) || is.null(fit_with_inter)) {
       return(base_row %>% mutate(status = "model_fit_failed"))
@@ -652,6 +760,9 @@ if (run_meta_phase) {
 
     base_row %>%
       mutate(
+        random_structure = fit_with_inter_best$best_random,
+        aic_homo = fit_with_inter_best$aic_homo,
+        aic_hetero = fit_with_inter_best$aic_hetero,
         lrt = lrt_val,
         pval = pval_val,
         interaction_sig = ifelse(is.na(pval_val), NA, pval_val < 0.05),
@@ -668,55 +779,51 @@ if (run_meta_phase) {
         return(tibble())
       }
 
-      fit_alpha_stat <- rma.mv(
-        yi,
-        vi,
-        random = list(~1 | Authors/subgroup, ~1 | obs),
-        mod = ~metric - 1,
-        data = alpha_data_stat,
-        test = "t",
-        method = "REML",
-        sparse = TRUE
-      )
+      fit_alpha_best <- fit_meta_model_best(alpha_data_stat, ~metric - 1)
+      if (is.null(fit_alpha_best)) {
+        return(tibble())
+      }
 
+      fit_alpha_stat <- fit_alpha_best$fit
       alpha_fit_list[[stat_name]] <<- fit_alpha_stat
 
       if (run_meta_plots) {
-        p_alpha_meta_stat <- orchaRd::orchard_plot(
-          fit_alpha_stat,
-          mod = "metric",
-          group = "Authors",
-          xlab = stat_name
-        )
-
-        ggsave(
-          here("results", paste0("alpha_meta_orchard_", stat_name, ".png")),
-          p_alpha_meta_stat,
-          width = 10,
-          height = 7,
-          dpi = 300
+        p_alpha_meta_stat <- plot_orchard_by_moderator(
+          data_in = alpha_data_stat,
+          by_col = "group_general",
+          xlab_text = stat_name,
+          output_file = paste0("alpha_meta_orchard_", stat_name, ".png")
         )
       }
 
-      as_tibble(orchaRd::mod_results(fit_alpha_stat, mod = "metric", group = "Authors")) %>%
-        mutate(stats = stat_name, .before = 1)
+      extract_model_coef(fit_alpha_stat, "alpha", stat_name) %>%
+        mutate(
+          random_structure = fit_alpha_best$best_random,
+          aic_homo         = fit_alpha_best$aic_homo,
+          aic_hetero       = fit_alpha_best$aic_hetero
+        )
     })
 
-    fit_beta_lnrr <- rma.mv(
-      yi,
-      vi,
-      random = list(~1 | Authors/subgroup, ~1 | obs),
-      mod = ~metric - 1,
-      data = beta_es,
-      test = "t",
-      method = "REML",
-      sparse = TRUE
-    )
+    fit_beta_best <- fit_meta_model_best(beta_es, ~metric - 1)
+    if (is.null(fit_beta_best)) {
+      stop("Phase C beta meta model failed under both homoscedastic and heteroscedastic random-effect structures.")
+    }
 
-    beta_model_results <- as_tibble(orchaRd::mod_results(fit_beta_lnrr, mod = "metric", group = "Authors"))
+    fit_beta_lnrr <- fit_beta_best$fit
+
+    beta_model_results <- extract_model_coef(fit_beta_lnrr, "beta", "lnRR") %>%
+      mutate(
+        random_structure = fit_beta_best$best_random,
+        aic_homo         = fit_beta_best$aic_homo,
+        aic_hetero       = fit_beta_best$aic_hetero
+      )
     if (run_meta_plots) {
-      p_beta_meta <- orchaRd::orchard_plot(fit_beta_lnrr, mod = "metric", group = "Authors", xlab = "lnRR")
-      ggsave(here("results", "beta_meta_orchard_lnRR.png"), p_beta_meta, width = 10, height = 7, dpi = 300)
+      p_beta_meta <- plot_orchard_by_moderator(
+        data_in = beta_es,
+        by_col = "group_general",
+        xlab_text = "lnRR",
+        output_file = "beta_meta_orchard_lnRR.png"
+      )
     }
 
     alpha_interaction_lrt <- purrr::map_dfr(alpha_stats, function(stat_name) {
@@ -766,23 +873,20 @@ if (run_meta_phase) {
       fit_beta_lnrr <- meta_fits$beta_fit
 
       for (stat_name in names(alpha_fit_list)) {
-        p_alpha_meta_stat <- orchaRd::orchard_plot(
-          alpha_fit_list[[stat_name]],
-          mod = "metric",
-          group = "Authors",
-          xlab = stat_name
-        )
-        ggsave(
-          here("results", paste0("alpha_meta_orchard_", stat_name, ".png")),
-          p_alpha_meta_stat,
-          width = 10,
-          height = 7,
-          dpi = 300
+        plot_orchard_by_moderator(
+          data_in = alpha_es %>% dplyr::filter(stats == stat_name),
+          by_col = "group_general",
+          xlab_text = stat_name,
+          output_file = paste0("alpha_meta_orchard_", stat_name, ".png")
         )
       }
 
-      p_beta_meta <- orchaRd::orchard_plot(fit_beta_lnrr, mod = "metric", group = "Authors", xlab = "lnRR")
-      ggsave(here("results", "beta_meta_orchard_lnRR.png"), p_beta_meta, width = 10, height = 7, dpi = 300)
+      p_beta_meta <- plot_orchard_by_moderator(
+        data_in = beta_es,
+        by_col = "group_general",
+        xlab_text = "lnRR",
+        output_file = "beta_meta_orchard_lnRR.png"
+      )
     }
   }
 
@@ -790,6 +894,334 @@ if (run_meta_phase) {
     p_beta_meta
   } else if (!run_meta_plots) {
     message("Phase C meta plot generation skipped (run_meta_plots = FALSE).")
+  }
+}
+```
+
+### Phase C.Treat — Meta-Meta Models for Treatment vs Control Effect Sizes
+
+This section runs the same meta-meta framework as Phase C, but using treatment-vs-control effect-size tables (`alpha_es_treat`, `beta_es_treat`) and testing `Sex` as the moderator factor in interaction models.
+
+```{r phase-c-treat-meta-models}
+if (run_meta_phase) {
+  run_meta_models <- isTRUE(run_meta_models)
+  run_meta_plots <- isTRUE(run_meta_plots)
+
+  alpha_treat_file <- here("results", "alpha_es_treatment_control.csv")
+  beta_treat_file <- here("results", "beta_es_lnRR_treatment.csv")
+
+  if (!exists("alpha_es_treat")) {
+    if (!file.exists(alpha_treat_file)) {
+      stop("Missing treatment-control alpha effect sizes. Provide alpha_es_treat in memory or results/alpha_es_treatment_control.csv.")
+    }
+    alpha_es_treat <- read.csv(alpha_treat_file, stringsAsFactors = FALSE)
+  }
+
+  if (!exists("beta_es_treat")) {
+    if (!file.exists(beta_treat_file)) {
+      stop("Missing treatment-control beta effect sizes. Provide beta_es_treat in memory or results/beta_es_lnRR_treatment.csv.")
+    }
+    beta_es_treat <- read.csv(beta_treat_file, stringsAsFactors = FALSE)
+  }
+
+  alpha_es_treat$metric <- factor(alpha_es_treat$metric, levels = c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+  alpha_es_treat$stats <- factor(alpha_es_treat$stats, levels = c("lnRR", "lnCVR", "lnVR"))
+  if (!"obs" %in% names(alpha_es_treat)) alpha_es_treat$obs <- seq_len(nrow(alpha_es_treat))
+
+  beta_es_treat$metric <- factor(beta_es_treat$metric, levels = c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+  if (!"obs" %in% names(beta_es_treat)) beta_es_treat$obs <- seq_len(nrow(beta_es_treat))
+
+  alpha_treat_stats <- unique(as.character(alpha_es_treat$stats))
+
+  meta_fit_treat_file <- here("results", "meta_model_fits_treatment_control.rds")
+  alpha_model_treat_file <- here("results", "alpha_meta_model_results_treatment_control.csv")
+  beta_model_treat_file <- here("results", "beta_meta_model_results_treatment_control.csv")
+  lrt_treat_file <- here("results", "meta_metric_treatment_interaction_lrt_treatment_control.csv")
+
+  fit_meta_model_best_treat <- function(data_in, mod_formula) {
+    fit_homo <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = mod_formula,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    fit_hetero <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~metric | obs),
+        mod = mod_formula,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    aic_homo <- if (is.null(fit_homo)) NA_real_ else tryCatch(as.numeric(AIC(fit_homo)), error = function(e) NA_real_)
+    aic_hetero <- if (is.null(fit_hetero)) NA_real_ else tryCatch(as.numeric(AIC(fit_hetero)), error = function(e) NA_real_)
+
+    if (is.null(fit_homo) && is.null(fit_hetero)) {
+      return(NULL)
+    }
+
+    use_hetero <- !is.null(fit_hetero) && (is.null(fit_homo) || (!is.na(aic_hetero) && (is.na(aic_homo) || aic_hetero < aic_homo)))
+
+    list(
+      fit = if (use_hetero) fit_hetero else fit_homo,
+      best_random = if (use_hetero) "heteroscedastic_metric_obs" else "homoscedastic_obs",
+      random_obs = if (use_hetero) ~metric | obs else ~1 | obs,
+      aic_homo = aic_homo,
+      aic_hetero = aic_hetero
+    )
+  }
+
+  # Plot a single orchard panel; means per metric are split by Sex using different
+  # shapes/colours. Fits ~metric * Sex - 1 for visualization (falls back to plain
+  # orchard if the interaction model fails or fewer than 2 sex levels are present).
+  plot_orchard_by_sex <- function(data_in, xlab_text, title_text, output_file) {
+    if (!"Sex" %in% names(data_in)) return(NULL)
+
+    dat_viz <- data_in %>%
+      dplyr::filter(!is.na(Sex), is.finite(yi), is.finite(vi), vi > 0)
+
+    fit_base_best <- fit_meta_model_best_treat(dat_viz, ~metric - 1)
+    if (is.null(fit_base_best)) return(NULL)
+
+    if (dplyr::n_distinct(dat_viz$Sex) < 2) {
+      p_out <- orchaRd::orchard_plot(fit_base_best$fit, mod = "metric",
+                                     group = "Authors", xlab = xlab_text) +
+        ggtitle(title_text)
+      ggsave(here("results", output_file), p_out, width = 10, height = 7, dpi = 300)
+      return(p_out)
+    }
+
+    fit_viz <- tryCatch(
+      rma.mv(
+        yi, vi,
+        random = list(~1 | Authors/subgroup, fit_base_best$random_obs),
+        mod = ~metric * Sex - 1,
+        data = dat_viz,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(fit_viz)) {
+      p_out <- orchaRd::orchard_plot(fit_base_best$fit, mod = "metric",
+                                     group = "Authors", xlab = xlab_text) +
+        ggtitle(title_text)
+    } else {
+      p_out <- orchaRd::orchard_plot(fit_viz, mod = "metric", by = "Sex",
+                                     group = "Authors", xlab = xlab_text) +
+        ggtitle(title_text)
+    }
+    ggsave(here("results", output_file), p_out, width = 10, height = 7, dpi = 300)
+    p_out
+  }
+
+  run_interaction_lrt_by_factor <- function(data_in, domain_label, stats_label, factor_col = "Sex") {
+    base_row <- tibble(
+      domain = domain_label,
+      stats = stats_label,
+      moderator = factor_col,
+      n_rows = 0L,
+      n_studies = 0L,
+      n_metrics = 0L,
+      n_levels = 0L,
+      lrt = NA_real_,
+      pval = NA_real_,
+      interaction_sig = NA,
+      status = "not_tested"
+    )
+
+    if (!factor_col %in% names(data_in)) {
+      return(base_row %>% mutate(status = "missing_moderator"))
+    }
+
+    dat_lrt <- data_in %>%
+      filter(
+        is.finite(yi),
+        is.finite(vi),
+        vi > 0,
+        !is.na(metric),
+        !is.na(Authors),
+        !is.na(.data[[factor_col]])
+      ) %>%
+      mutate(
+        metric = factor(metric),
+        moderator = factor(.data[[factor_col]])
+      )
+
+    base_row <- base_row %>%
+      mutate(
+        n_rows = nrow(dat_lrt),
+        n_studies = dplyr::n_distinct(dat_lrt$Authors),
+        n_metrics = dplyr::n_distinct(dat_lrt$metric),
+        n_levels = dplyr::n_distinct(dat_lrt$moderator)
+      )
+
+    if (nrow(dat_lrt) < 8 || dplyr::n_distinct(dat_lrt$metric) < 2 || dplyr::n_distinct(dat_lrt$moderator) < 2) {
+      return(base_row %>% mutate(status = "insufficient_data"))
+    }
+
+    fit_with_inter_best <- fit_meta_model_best_treat(dat_lrt, ~metric * moderator - 1)
+    if (is.null(fit_with_inter_best)) {
+      return(base_row %>% mutate(status = "model_fit_failed"))
+    }
+
+    fit_no_inter <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, fit_with_inter_best$random_obs),
+        mod = ~metric + moderator - 1,
+        data = dat_lrt,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    fit_with_inter <- fit_with_inter_best$fit
+
+    if (is.null(fit_no_inter) || is.null(fit_with_inter)) {
+      return(base_row %>% mutate(status = "model_fit_failed"))
+    }
+
+    lrt_obj <- tryCatch(anova(fit_no_inter, fit_with_inter), error = function(e) NULL)
+    if (is.null(lrt_obj)) {
+      return(base_row %>% mutate(status = "lrt_failed"))
+    }
+
+    lrt_df <- as.data.frame(lrt_obj)
+    lrt_val <- if ("LRT" %in% names(lrt_df)) as.numeric(lrt_df$LRT[nrow(lrt_df)]) else NA_real_
+    pval_val <- if ("pval" %in% names(lrt_df)) as.numeric(lrt_df$pval[nrow(lrt_df)]) else NA_real_
+
+    base_row %>%
+      mutate(
+        random_structure = fit_with_inter_best$best_random,
+        aic_homo = fit_with_inter_best$aic_homo,
+        aic_hetero = fit_with_inter_best$aic_hetero,
+        lrt = lrt_val,
+        pval = pval_val,
+        interaction_sig = ifelse(is.na(pval_val), NA, pval_val < 0.05),
+        status = "ok"
+      )
+  }
+
+  if (run_meta_models) {
+    alpha_treat_fit_list <- list()
+
+    alpha_model_results_treat <- purrr::map_dfr(alpha_treat_stats, function(stat_name) {
+      alpha_data_stat <- alpha_es_treat %>% filter(stats == stat_name)
+      if (nrow(alpha_data_stat) < 3 || dplyr::n_distinct(alpha_data_stat$metric) < 2) {
+        return(tibble())
+      }
+
+      fit_alpha_treat_best <- fit_meta_model_best_treat(alpha_data_stat, ~metric - 1)
+      if (is.null(fit_alpha_treat_best)) {
+        return(tibble())
+      }
+
+      fit_alpha_treat_stat <- fit_alpha_treat_best$fit
+      alpha_treat_fit_list[[stat_name]] <<- fit_alpha_treat_stat
+
+      extract_model_coef(fit_alpha_treat_stat, "alpha_treatment_control", stat_name) %>%
+        mutate(
+          random_structure = fit_alpha_treat_best$best_random,
+          aic_homo         = fit_alpha_treat_best$aic_homo,
+          aic_hetero       = fit_alpha_treat_best$aic_hetero
+        )
+    })
+
+    fit_beta_treat_best <- fit_meta_model_best_treat(beta_es_treat, ~metric - 1)
+    if (is.null(fit_beta_treat_best)) {
+      stop("Phase C.Treat beta meta model failed under both homoscedastic and heteroscedastic random-effect structures.")
+    }
+
+    fit_beta_treat_lnrr <- fit_beta_treat_best$fit
+
+    beta_model_results_treat <- extract_model_coef(fit_beta_treat_lnrr, "beta_treatment_control", "lnRR") %>%
+      mutate(
+        random_structure = fit_beta_treat_best$best_random,
+        aic_homo         = fit_beta_treat_best$aic_homo,
+        aic_hetero       = fit_beta_treat_best$aic_hetero
+      )
+
+    alpha_interaction_lrt_treat <- purrr::map_dfr(alpha_treat_stats, function(stat_name) {
+      run_interaction_lrt_by_factor(
+        data_in = alpha_es_treat %>% filter(stats == stat_name),
+        domain_label = "alpha_treatment_control",
+        stats_label = stat_name,
+        factor_col = "Sex"
+      )
+    })
+
+    beta_interaction_lrt_treat <- run_interaction_lrt_by_factor(
+      data_in = beta_es_treat,
+      domain_label = "beta_treatment_control",
+      stats_label = "lnRR",
+      factor_col = "Sex"
+    )
+
+    meta_interaction_lrt_treat <- bind_rows(alpha_interaction_lrt_treat, beta_interaction_lrt_treat)
+
+    write.csv(alpha_model_results_treat, alpha_model_treat_file, row.names = FALSE)
+    write.csv(beta_model_results_treat, beta_model_treat_file, row.names = FALSE)
+    write.csv(meta_interaction_lrt_treat, lrt_treat_file, row.names = FALSE)
+
+    saveRDS(
+      list(alpha_fits = alpha_treat_fit_list, beta_fit = fit_beta_treat_lnrr),
+      meta_fit_treat_file
+    )
+  } else {
+    if (!file.exists(alpha_model_treat_file) || !file.exists(beta_model_treat_file) || !file.exists(lrt_treat_file)) {
+      stop("Missing treatment-control meta CSV outputs. Set run_meta_models <- TRUE once.")
+    }
+
+    alpha_model_results_treat <- read.csv(alpha_model_treat_file, stringsAsFactors = FALSE)
+    beta_model_results_treat <- read.csv(beta_model_treat_file, stringsAsFactors = FALSE)
+    meta_interaction_lrt_treat <- read.csv(lrt_treat_file, stringsAsFactors = FALSE)
+  }
+
+  if (run_meta_plots) {
+    alpha_treat_plot_list <- purrr::map(alpha_treat_stats, function(stat_name) {
+      alpha_data_stat <- alpha_es_treat %>% filter(stats == stat_name)
+      plot_orchard_by_sex(
+        data_in = alpha_data_stat,
+        xlab_text = paste0(stat_name, " (Treatment vs Control)"),
+        title_text = paste0("Alpha Orchard by Sex (", stat_name, ")"),
+        output_file = paste0("alpha_meta_orchard_treatment_control_by_sex_", gsub("[^A-Za-z0-9]+", "_", stat_name), ".png")
+      )
+    }) %>% purrr::compact()
+
+    p_beta_treat_meta <- plot_orchard_by_sex(
+      data_in = beta_es_treat,
+      xlab_text = "lnRR (Treatment vs Control)",
+      title_text = "Beta Orchard by Sex (Treatment vs Control)",
+      output_file = "beta_meta_orchard_lnRR_treatment_control_by_sex.png"
+    )
+
+    if (length(alpha_treat_plot_list) > 0) {
+      alpha_treat_plot_list[[1]]
+    } else {
+      p_beta_treat_meta
+    }
+  } else if (!run_meta_plots) {
+    message("Phase C.Treat meta plot generation skipped (run_meta_plots = FALSE).")
   }
 }
 ```
@@ -1134,18 +1566,426 @@ if (run_meta_phase && (run_loo_models || run_loo_plots)) {
 }
 ```
 
+### Phase C.Treat.1 — Leave-One-Study-Out Sensitivity (Treatment vs Control)
+
+This sensitivity analysis re-fits treatment-vs-control meta models after excluding one study at a time.
+
+```{r phase-c-treat1-leave-one-out}
+
+if (run_meta_phase && (run_loo_models || run_loo_plots)) {
+  run_loo_models <- isTRUE(run_loo_models)
+  run_loo_plots <- isTRUE(run_loo_plots)
+
+  alpha_treat_file <- here("results", "alpha_es_treatment_control.csv")
+  beta_treat_file <- here("results", "beta_es_lnRR_treatment.csv")
+
+  if (!exists("alpha_es_treat")) {
+    if (!file.exists(alpha_treat_file)) {
+      stop("Missing treatment-control alpha effect sizes. Provide alpha_es_treat in memory or results/alpha_es_treatment_control.csv.")
+    }
+    alpha_es_treat <- read.csv(alpha_treat_file, stringsAsFactors = FALSE)
+  }
+
+  if (!exists("beta_es_treat")) {
+    if (!file.exists(beta_treat_file)) {
+      stop("Missing treatment-control beta effect sizes. Provide beta_es_treat in memory or results/beta_es_lnRR_treatment.csv.")
+    }
+    beta_es_treat <- read.csv(beta_treat_file, stringsAsFactors = FALSE)
+  }
+
+  alpha_es_treat$metric <- factor(alpha_es_treat$metric, levels = c("Richness", "Chao1", "Evenness", "Shannon", "Simpson", "Faith's PD"))
+  alpha_es_treat$stats <- factor(alpha_es_treat$stats, levels = c("lnRR", "lnCVR", "lnVR"))
+  if (!"obs" %in% names(alpha_es_treat)) alpha_es_treat$obs <- seq_len(nrow(alpha_es_treat))
+
+  beta_es_treat$metric <- factor(beta_es_treat$metric, levels = c("Jaccard", "Bray-Curtis", "Weighted Unifrac", "Unweighted Unifrac"))
+  if (!"obs" %in% names(beta_es_treat)) beta_es_treat$obs <- seq_len(nrow(beta_es_treat))
+
+  extract_coef_table_treat <- function(fit_obj, left_out_label) {
+    beta_mat <- as.matrix(fit_obj$b)
+    term_names <- rownames(beta_mat)
+    if (is.null(term_names)) {
+      term_names <- paste0("term_", seq_len(nrow(beta_mat)))
+    }
+
+    tibble(
+      left_out = left_out_label,
+      term = term_names,
+      estimate = as.numeric(beta_mat[, 1]),
+      se = as.numeric(fit_obj$se),
+      ci_lb = as.numeric(fit_obj$ci.lb),
+      ci_ub = as.numeric(fit_obj$ci.ub),
+      pval = as.numeric(fit_obj$pval)
+    )
+  }
+
+  run_leave_one_out_treat <- function(data_in, model_label) {
+    full_fit <- tryCatch(
+      rma.mv(
+        yi,
+        vi,
+        random = list(~1 | Authors/subgroup, ~1 | obs),
+        mod = ~metric - 1,
+        data = data_in,
+        test = "t",
+        method = "REML",
+        sparse = TRUE
+      ),
+      error = function(e) NULL
+    )
+
+    if (is.null(full_fit)) {
+      return(NULL)
+    }
+
+    full_tbl <- extract_coef_table_treat(full_fit, left_out_label = "none")
+
+    loo_tbl <- purrr::map_dfr(unique(data_in$Authors), function(study_drop) {
+      data_loo <- data_in %>% filter(Authors != study_drop)
+
+      if (nrow(data_loo) < 3 || dplyr::n_distinct(data_loo$metric) < 2) {
+        return(tibble())
+      }
+
+      fit_loo <- tryCatch(
+        rma.mv(
+          yi,
+          vi,
+          random = list(~1 | Authors/subgroup, ~1 | obs),
+          mod = ~metric - 1,
+          data = data_loo,
+          test = "t",
+          method = "REML",
+          sparse = TRUE
+        ),
+        error = function(e) NULL
+      )
+
+      if (is.null(fit_loo)) {
+        return(tibble())
+      }
+
+      extract_coef_table_treat(fit_loo, left_out_label = study_drop)
+    })
+
+    combined_tbl <- bind_rows(full_tbl, loo_tbl) %>%
+      mutate(model = model_label)
+
+    delta_tbl <- combined_tbl %>%
+      filter(left_out != "none") %>%
+      left_join(
+        full_tbl %>% dplyr::select(
+          term,
+          full_estimate = estimate,
+          full_pval     = pval,
+          full_ci_lb    = ci_lb,
+          full_ci_ub    = ci_ub
+        ),
+        by = "term"
+      ) %>%
+      mutate(
+        delta_from_full = estimate - full_estimate,
+        full_sig       = full_pval < 0.05,
+        loo_sig        = pval < 0.05,
+        direction_flip = sign(estimate) != sign(full_estimate),
+        sig_change     = full_sig != loo_sig,
+        robustness     = dplyr::case_when(
+          direction_flip &  sig_change ~ "Flip + sig. change",
+          direction_flip & !sig_change ~ "Direction flip only",
+         !direction_flip &  sig_change ~ "Sig. change only",
+          TRUE                         ~ "Stable"
+        )
+      )
+
+    list(full = full_tbl, all = combined_tbl, delta = delta_tbl)
+  }
+
+  clean_file_tag_treat <- function(x) {
+    x %>%
+      tolower() %>%
+      stringr::str_replace_all("[^a-z0-9]+", "_") %>%
+      stringr::str_replace_all("^_|_$", "")
+  }
+
+  plot_loo_by_metric_treat <- function(df_in, title_text, subtitle_text) {
+    pdat <- df_in %>%
+      mutate(
+        left_out = forcats::fct_reorder(left_out, abs(delta_from_full)),
+        term = stringr::str_remove(term, "^metric")
+      )
+
+    ggplot(pdat, aes(x = delta_from_full, y = left_out)) +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+      geom_segment(aes(x = 0, xend = delta_from_full, y = left_out, yend = left_out), alpha = 0.6) +
+      geom_point(aes(color = delta_from_full > 0), size = 2.5) +
+      scale_color_manual(values = c(`TRUE` = "#B2182B", `FALSE` = "#2166AC"), guide = "none") +
+      facet_wrap(~term, scales = "free_y") +
+      labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = "Delta from full-model estimate",
+        y = "Left-out study"
+      ) +
+      theme_bw() +
+      theme(strip.text = element_text(size = 9))
+  }
+
+  robustness_levels_treat <- c("Stable", "Sig. change only", "Direction flip only", "Flip + sig. change")
+  robustness_colors_treat <- c(
+    "Stable"              = "#4DAF4A",
+    "Sig. change only"    = "#FF7F00",
+    "Direction flip only" = "#984EA3",
+    "Flip + sig. change"  = "#E41A1C"
+  )
+
+  if (run_loo_models) {
+    alpha_treat_stats <- unique(as.character(alpha_es_treat$stats))
+
+    alpha_loo_treat_list <- purrr::map(alpha_treat_stats, function(stat_name) {
+      alpha_model_data <- alpha_es_treat %>% filter(stats == stat_name)
+
+      if (nrow(alpha_model_data) < 3 || dplyr::n_distinct(alpha_model_data$metric) < 2) {
+        return(NULL)
+      }
+
+      out <- run_leave_one_out_treat(alpha_model_data, model_label = paste0("alpha_treat_", stat_name))
+      if (is.null(out)) {
+        return(NULL)
+      }
+
+      list(
+        all = out$all %>% mutate(stats = stat_name, .before = 1),
+        delta = out$delta %>% mutate(stats = stat_name, .before = 1)
+      )
+    })
+
+    alpha_loo_treat_list <- purrr::compact(alpha_loo_treat_list)
+    beta_loo_treat <- run_leave_one_out_treat(beta_es_treat, model_label = "beta_treat_lnRR")
+
+    alpha_loo_treat_all <- bind_rows(purrr::map(alpha_loo_treat_list, "all"))
+    alpha_loo_treat_delta <- bind_rows(purrr::map(alpha_loo_treat_list, "delta"))
+    beta_loo_treat_all <- if (is.null(beta_loo_treat)) tibble() else beta_loo_treat$all
+    beta_loo_treat_delta <- if (is.null(beta_loo_treat)) tibble() else beta_loo_treat$delta
+
+    write.csv(alpha_loo_treat_all, here("results", "alpha_meta_leave_one_out_treatment_control.csv"), row.names = FALSE)
+    write.csv(alpha_loo_treat_delta, here("results", "alpha_meta_leave_one_out_delta_treatment_control.csv"), row.names = FALSE)
+    write.csv(beta_loo_treat_all, here("results", "beta_meta_leave_one_out_treatment_control.csv"), row.names = FALSE)
+    write.csv(beta_loo_treat_delta, here("results", "beta_meta_leave_one_out_delta_treatment_control.csv"), row.names = FALSE)
+
+    alpha_influential_treat <- alpha_loo_treat_delta %>%
+      group_by(stats, term) %>%
+      slice_max(order_by = abs(delta_from_full), n = 5, with_ties = FALSE) %>%
+      ungroup()
+
+    beta_influential_treat <- beta_loo_treat_delta %>%
+      group_by(term) %>%
+      slice_max(order_by = abs(delta_from_full), n = 5, with_ties = FALSE) %>%
+      ungroup()
+
+    alpha_robustness_treat <- alpha_loo_treat_delta %>%
+      mutate(
+        term       = stringr::str_remove(term, "^metric"),
+        robustness = factor(robustness, levels = robustness_levels_treat)
+      ) %>%
+      count(stats, term, robustness, name = "n_studies") %>%
+      tidyr::complete(stats, term, robustness, fill = list(n_studies = 0L))
+
+    beta_robustness_treat <- beta_loo_treat_delta %>%
+      mutate(
+        term       = stringr::str_remove(term, "^metric"),
+        robustness = factor(robustness, levels = robustness_levels_treat)
+      ) %>%
+      count(term, robustness, name = "n_studies") %>%
+      tidyr::complete(term, robustness, fill = list(n_studies = 0L))
+
+    write.csv(alpha_robustness_treat, here("results", "alpha_meta_loo_robustness_treatment_control.csv"), row.names = FALSE)
+    write.csv(beta_robustness_treat, here("results", "beta_meta_loo_robustness_treatment_control.csv"), row.names = FALSE)
+    write.csv(alpha_influential_treat, here("results", "alpha_meta_leave_one_out_top_influential_treatment_control.csv"), row.names = FALSE)
+    write.csv(beta_influential_treat, here("results", "beta_meta_leave_one_out_top_influential_treatment_control.csv"), row.names = FALSE)
+  } else {
+    req_loo_treat_files <- c(
+      here("results", "alpha_meta_leave_one_out_treatment_control.csv"),
+      here("results", "alpha_meta_leave_one_out_delta_treatment_control.csv"),
+      here("results", "beta_meta_leave_one_out_treatment_control.csv"),
+      here("results", "beta_meta_leave_one_out_delta_treatment_control.csv"),
+      here("results", "alpha_meta_loo_robustness_treatment_control.csv"),
+      here("results", "beta_meta_loo_robustness_treatment_control.csv"),
+      here("results", "alpha_meta_leave_one_out_top_influential_treatment_control.csv"),
+      here("results", "beta_meta_leave_one_out_top_influential_treatment_control.csv")
+    )
+
+    missing_loo_treat_files <- req_loo_treat_files[!file.exists(req_loo_treat_files)]
+    if (length(missing_loo_treat_files) > 0) {
+      stop(
+        paste0(
+          "Missing Phase C.Treat.1 LOO files: ",
+          paste(basename(missing_loo_treat_files), collapse = ", "),
+          ". Set run_loo_models <- TRUE once."
+        )
+      )
+    }
+
+    alpha_loo_treat_all <- read.csv(here("results", "alpha_meta_leave_one_out_treatment_control.csv"), stringsAsFactors = FALSE)
+    alpha_loo_treat_delta <- read.csv(here("results", "alpha_meta_leave_one_out_delta_treatment_control.csv"), stringsAsFactors = FALSE)
+    beta_loo_treat_all <- read.csv(here("results", "beta_meta_leave_one_out_treatment_control.csv"), stringsAsFactors = FALSE)
+    beta_loo_treat_delta <- read.csv(here("results", "beta_meta_leave_one_out_delta_treatment_control.csv"), stringsAsFactors = FALSE)
+    alpha_robustness_treat <- read.csv(here("results", "alpha_meta_loo_robustness_treatment_control.csv"), stringsAsFactors = FALSE)
+    beta_robustness_treat <- read.csv(here("results", "beta_meta_loo_robustness_treatment_control.csv"), stringsAsFactors = FALSE)
+    alpha_influential_treat <- read.csv(here("results", "alpha_meta_leave_one_out_top_influential_treatment_control.csv"), stringsAsFactors = FALSE)
+    beta_influential_treat <- read.csv(here("results", "beta_meta_leave_one_out_top_influential_treatment_control.csv"), stringsAsFactors = FALSE)
+  }
+
+  if (run_loo_plots) {
+    alpha_robustness_treat <- alpha_robustness_treat %>%
+      mutate(robustness = factor(robustness, levels = robustness_levels_treat))
+    beta_robustness_treat <- beta_robustness_treat %>%
+      mutate(robustness = factor(robustness, levels = robustness_levels_treat))
+
+    p_alpha_robustness_treat <- alpha_robustness_treat %>%
+      ggplot(aes(x = term, y = n_studies, fill = robustness)) +
+      geom_col(position = "stack", width = 0.7) +
+      scale_fill_manual(values = robustness_colors_treat, name = "LOO outcome") +
+      facet_wrap(~stats, ncol = 1) +
+      labs(
+        title    = "Alpha Diversity (Treatment vs Control) — LOO Robustness",
+        subtitle = "Number of studies whose removal changes direction or significance",
+        x        = "Metric",
+        y        = "Number of studies"
+      ) +
+      theme_bw() +
+      theme(
+        axis.text.x  = element_text(angle = 35, hjust = 1),
+        strip.text   = element_text(face = "bold")
+      )
+
+    p_beta_robustness_treat <- beta_robustness_treat %>%
+      ggplot(aes(x = term, y = n_studies, fill = robustness)) +
+      geom_col(position = "stack", width = 0.7) +
+      scale_fill_manual(values = robustness_colors_treat, name = "LOO outcome") +
+      labs(
+        title    = "Beta Diversity (Treatment vs Control, lnRR) — LOO Robustness",
+        subtitle = "Number of studies whose removal changes direction or significance",
+        x        = "Metric",
+        y        = "Number of studies"
+      ) +
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 35, hjust = 1))
+
+    ggsave(here("results", "meta_loo_robustness_alpha_treatment_control.png"), p_alpha_robustness_treat,
+           width = 8, height = 7, dpi = 300)
+    ggsave(here("results", "meta_loo_robustness_beta_treatment_control.png"),  p_beta_robustness_treat,
+           width = 7, height = 5, dpi = 300)
+
+    alpha_plot_index_treat <- alpha_influential_treat %>%
+      group_by(stats) %>%
+      group_split() %>%
+      purrr::map_dfr(function(dsub) {
+        stat_name <- unique(dsub$stats)
+
+        p <- plot_loo_by_metric_treat(
+          dsub,
+          title_text = paste("Alpha LOO Influence (Treatment vs Control, ", stat_name, ")", sep = ""),
+          subtitle_text = paste("Effect size:", stat_name)
+        )
+
+        file_name <- paste0("meta_leave_one_out_influence_alpha_treatment_control_", clean_file_tag_treat(stat_name), ".png")
+        file_path <- here("results", file_name)
+        n_terms <- dplyr::n_distinct(dsub$term)
+        ggsave(file_path, p, width = 4 * n_terms, height = 6, dpi = 300)
+
+        tibble(
+          domain = "alpha_treatment_control",
+          stats = stat_name,
+          term = "all_terms",
+          plot_file = paste0("results/", file_name)
+        )
+      })
+
+    beta_plot_index_treat <- tibble()
+    if (nrow(beta_influential_treat) > 0) {
+      p_beta_loo_treat <- plot_loo_by_metric_treat(
+        beta_influential_treat,
+        title_text = "Beta LOO Influence (Treatment vs Control, lnRR)",
+        subtitle_text = "Effect size: lnRR"
+      )
+      beta_file_name_treat <- "meta_leave_one_out_influence_beta_lnrr_treatment_control.png"
+      beta_file_path_treat <- here("results", beta_file_name_treat)
+      beta_n_terms_treat <- dplyr::n_distinct(beta_influential_treat$term)
+      ggsave(beta_file_path_treat, p_beta_loo_treat, width = 4 * beta_n_terms_treat, height = 6, dpi = 300)
+
+      beta_plot_index_treat <- tibble(
+        domain = "beta_treatment_control",
+        stats = "lnRR",
+        term = "all_terms",
+        plot_file = paste0("results/", beta_file_name_treat)
+      )
+    }
+
+    loo_plot_index_treat <- bind_rows(alpha_plot_index_treat, beta_plot_index_treat)
+    write.csv(loo_plot_index_treat, here("results", "meta_leave_one_out_plot_index_treatment_control.csv"), row.names = FALSE)
+
+    loo_plot_index_treat
+  } else {
+    message("Phase C.Treat.1 LOO plot generation skipped (run_loo_plots = FALSE).")
+  }
+}
+```
+
 ## 8) Phase D — Differential Abundance Analysis (ALDEx2 + ANCOM)
 
 This phase runs DAA within each study/subgroup and then identifies overlap between ALDEx2 and ANCOM signals.
 
 ```{r phase-c-daa}
 if (run_daa_phase) {
+  # Check if ANCOMBC is available
+  ancombc_available <- requireNamespace("ANCOMBC", quietly = TRUE)
+  
+  if (!ancombc_available) {
+    cat("⚠️  ANCOMBC package not available. Running ALDEx2 analysis only. ANCOM results will be skipped.\n")
+  }
+
   run_daa_models <- isTRUE(run_daa_models)
   run_daa_plots <- isTRUE(run_daa_plots)
 
   if (run_daa_models) {
+    ancom_call_count <- 0
+    ancom_success_count <- 0
+    ancom_failure_log <- NULL
+
+    # Only define and use run_ancom_safe if ANCOMBC is available
+    if (ancombc_available) {
+      run_ancom_safe <- function(data_obj, meta_obj, main_var_name, sample_sums_obj, context_label = "") {
+        ancom_call_count <<- ancom_call_count + 1
+        
+        result <- tryCatch(
+          ANCOMBC::ancom(
+            data = data_obj,
+            meta_data = meta_obj,
+            p_adj_method = "BH",
+            prv_cut = 0.10,
+            lib_cut = min(sample_sums_obj),
+            main_var = main_var_name,
+            alpha = 0.05,
+            n_cl = 1
+          ),
+          error = function(e) {
+            err_msg <- conditionMessage(e)
+            ancom_failure_log <<- c(ancom_failure_log, paste0(context_label, ": ", err_msg))
+            NULL
+          }
+        )
+        
+        if (!is.null(result)) {
+          ancom_success_count <<- ancom_success_count + 1
+        }
+        
+        result
+      }
+    }
+
     res_all <- list()
     ancom_all <- list()
+    res_all_group_within_sex <- list()
+    ancom_all_group_within_sex <- list()
 
     for (i in seq_len(nrow(study_group_map))) {
       study <- study_group_map$Authors[i]
@@ -1158,6 +1998,25 @@ if (run_daa_phase) {
       if (!group_var %in% names(sample_df)) next
 
       sample_df <- normalize_group(sample_df)
+
+      if (!"host_sex" %in% names(sample_df) || length(sample_df$host_sex) == 0) {
+        sample_df$host_sex <- rep(NA_character_, nrow(sample_df))
+      }
+      sample_df$host_sex <- tolower(as.character(sample_df$host_sex))
+
+      if (!"group_general" %in% names(sample_df) || length(sample_df$group_general) == 0) {
+        if ("subgroup" %in% names(sample_df) && length(sample_df$subgroup) == nrow(sample_df)) {
+          sample_df$group_general <- ifelse(
+            grepl("control", as.character(sample_df$subgroup), ignore.case = TRUE),
+            "control",
+            "treatment"
+          )
+        } else {
+          sample_df$group_general <- rep(NA_character_, nrow(sample_df))
+        }
+      }
+      sample_df$group_general <- tolower(as.character(sample_df$group_general))
+
       sample_data(sub) <- sample_data(sample_df)
 
       group_values <- unique(sample_df[[group_var]])
@@ -1177,9 +2036,13 @@ if (run_daa_phase) {
         d_eff <- aldex.effect(d_x)
         d_tt <- aldex.ttest(d_x)
         res <- data.frame(d_eff, d_tt)
+        res$ASV <- rownames(res)
+        res <- dplyr::relocate(res, ASV)
 
-        taxa <- tibble::rownames_to_column(as.data.frame(tax_table(tb)), var = "Row.names")
-        res_taxa <- merge(taxa, res, by = "Row.names") %>%
+        taxa <- as.data.frame(tax_table(tb))
+        taxa$ASV <- rownames(taxa)
+        taxa <- dplyr::relocate(taxa, ASV)
+        res_taxa <- merge(taxa, res, by = "ASV") %>%
           mutate(
             Group = group,
             Study = study,
@@ -1195,59 +2058,209 @@ if (run_daa_phase) {
         remove_low_abun <- filter_taxa(rel_abun, function(x) max(x) > 0.001, TRUE)
         tb_f <- filter_taxa(remove_low_abun, function(x) stats::var(x) > 1e-06, TRUE)
 
-        out <- ANCOMBC::ancom(
-          data = tb_f,
-          meta_data = sdf_tb,
-          p_adj_method = "BH",
-          prv_cut = 0.10,
-          lib_cut = min(sample_sums(tb_f)),
-          main_var = "host_sex",
-          alpha = 0.05,
-          n_cl = 1
-        )
+        if (ancombc_available) {
+          out <- run_ancom_safe(
+            data_obj = tb_f,
+            meta_obj = sdf_tb,
+            main_var_name = "host_sex",
+            sample_sums_obj = sample_sums(tb_f),
+            context_label = paste(study, group, "sex_contrast", sep = "|")
+          )
 
-        q_val <- out$q_data
-        beta_val <- out$beta_data * (q_val < 0.05)
-        beta_pos <- apply(abs(beta_val), 2, which.max)
-        beta_max <- vapply(seq_along(beta_pos), function(k) beta_val[beta_pos[k], k], FUN.VALUE = double(1))
+          if (!is.null(out)) {
+            q_val <- out$q_data
+            beta_val <- out$beta_data * (q_val < 0.05)
+            beta_pos <- apply(abs(beta_val), 2, which.max)
+            beta_max <- vapply(seq_along(beta_pos), function(k) beta_val[beta_pos[k], k], FUN.VALUE = double(1))
 
-        n_taxa <- ifelse(
-          is.null(out$zero_ind),
-          nrow(otu_table(tb_f)),
-          sum(apply(out$zero_ind[, -1, drop = FALSE], 1, sum) == 0)
-        )
-
-        df_w <- out$res %>%
-          mutate(
-            beta = beta_max,
-            direct = case_when(
-              detected_0.7 & beta > 0 ~ "Positive",
-              detected_0.7 & beta <= 0 ~ "Negative",
-              TRUE ~ "Not Significant"
+            n_taxa <- ifelse(
+              is.null(out$zero_ind),
+              nrow(otu_table(tb_f)),
+              sum(apply(out$zero_ind[, -1, drop = FALSE], 1, sum) == 0)
             )
-          ) %>%
-          arrange(W)
 
-        df_w_taxa <- merge(taxa, df_w, by = "Row.names") %>%
-          mutate(group = group, Study = study)
-        df_w_taxa$W <- replace(df_w_taxa$W, is.infinite(df_w_taxa$W), n_taxa - 1)
+            df_w <- out$res %>%
+              mutate(
+                beta = beta_max,
+                direct = case_when(
+                  detected_0.7 & beta > 0 ~ "Positive",
+                  detected_0.7 & beta <= 0 ~ "Negative",
+                  TRUE ~ "Not Significant"
+                )
+              ) %>%
+              arrange(W)
+            df_w$ASV <- rownames(df_w)
+            df_w <- dplyr::relocate(df_w, ASV)
 
-        ancom_all[[paste(study, group, sep = "__")]] <- df_w_taxa
+            df_w_taxa <- merge(taxa, df_w, by = "ASV") %>%
+              mutate(group = group, Study = study)
+            df_w_taxa$W <- replace(df_w_taxa$W, is.infinite(df_w_taxa$W), n_taxa - 1)
+
+            ancom_all[[paste(study, group, sep = "__")]] <- df_w_taxa
+          }
+        }
+      }
+
+      # Additional contrast: treatment vs control within each sex (within study)
+      for (sex_value in c("female", "male")) {
+        tb_sex <- subset_samples(sub, host_sex == sex_value)
+        sdf_sex <- data.frame(sample_data(tb_sex))
+        if (nrow(sdf_sex) < 4 || !"group_general" %in% names(sdf_sex)) next
+
+        sdf_sex$group_general <- tolower(as.character(sdf_sex$group_general))
+        valid_group <-
+          sum(sdf_sex$group_general == "control", na.rm = TRUE) > 1 &&
+          sum(sdf_sex$group_general == "treatment", na.rm = TRUE) > 1
+        if (!valid_group) next
+
+        keep_samples <- rownames(sdf_sex)[sdf_sex$group_general %in% c("control", "treatment")]
+        if (length(keep_samples) < 4) next
+
+        tb_sex <- prune_samples(keep_samples, tb_sex)
+        sdf_sex <- data.frame(sample_data(tb_sex))
+        sdf_sex$group_general <- factor(tolower(as.character(sdf_sex$group_general)), levels = c("control", "treatment"))
+        if (any(is.na(sdf_sex$group_general))) next
+
+        d_x_group <- aldex.clr(as.data.frame(otu_table(tb_sex)), conds = sample_data(tb_sex)$group_general, mc.samples = 128)
+        d_eff_group <- aldex.effect(d_x_group)
+        d_tt_group <- aldex.ttest(d_x_group)
+        res_group <- data.frame(d_eff_group, d_tt_group)
+        res_group$ASV <- rownames(res_group)
+        res_group <- dplyr::relocate(res_group, ASV)
+
+        taxa_group <- as.data.frame(tax_table(tb_sex))
+        taxa_group$ASV <- rownames(taxa_group)
+        taxa_group <- dplyr::relocate(taxa_group, ASV)
+        res_taxa_group <- merge(taxa_group, res_group, by = "ASV") %>%
+          mutate(
+            Sex = sex_value,
+            Study = study,
+            Contrast = "group_general_within_sex",
+            direct = case_when(
+              effect > 0 ~ "Positive",
+              effect <= 0 ~ "Negative",
+              TRUE ~ "NA"
+            )
+          )
+        res_all_group_within_sex[[paste(study, sex_value, sep = "__")]] <- res_taxa_group
+
+        rel_abun_group <- transform_sample_counts(tb_sex, function(x) x / sum(x))
+        remove_low_abun_group <- filter_taxa(rel_abun_group, function(x) max(x) > 0.001, TRUE)
+        tb_f_group <- filter_taxa(remove_low_abun_group, function(x) stats::var(x) > 1e-06, TRUE)
+        if (ntaxa(tb_f_group) < 2) next
+
+        if (ancombc_available) {
+          out_group <- run_ancom_safe(
+            data_obj = tb_f_group,
+            meta_obj = sdf_sex,
+            main_var_name = "group_general",
+            sample_sums_obj = sample_sums(tb_f_group),
+            context_label = paste(study, sex_value, "group_contrast", sep = "|")
+          )
+
+          if (!is.null(out_group)) {
+            q_val_group <- out_group$q_data
+            beta_val_group <- out_group$beta_data * (q_val_group < 0.05)
+            beta_pos_group <- apply(abs(beta_val_group), 2, which.max)
+            beta_max_group <- vapply(seq_along(beta_pos_group), function(k) beta_val_group[beta_pos_group[k], k], FUN.VALUE = double(1))
+
+            n_taxa_group <- ifelse(
+              is.null(out_group$zero_ind),
+              nrow(otu_table(tb_f_group)),
+              sum(apply(out_group$zero_ind[, -1, drop = FALSE], 1, sum) == 0)
+            )
+
+            df_w_group <- out_group$res %>%
+              mutate(
+                beta = beta_max_group,
+                direct = case_when(
+                  detected_0.7 & beta > 0 ~ "Positive",
+                  detected_0.7 & beta <= 0 ~ "Negative",
+                  TRUE ~ "Not Significant"
+                )
+              ) %>%
+              arrange(W)
+            df_w_group$ASV <- rownames(df_w_group)
+            df_w_group <- dplyr::relocate(df_w_group, ASV)
+
+            df_w_taxa_group <- merge(taxa_group, df_w_group, by = "ASV") %>%
+              mutate(Sex = sex_value, Study = study, Contrast = "group_general_within_sex")
+            df_w_taxa_group$W <- replace(df_w_taxa_group$W, is.infinite(df_w_taxa_group$W), n_taxa_group - 1)
+
+            ancom_all_group_within_sex[[paste(study, sex_value, sep = "__")]] <- df_w_taxa_group
+          }
+        }
       }
     }
 
+    if (ancombc_available) {
+      cat(
+        "\n=== ANCOM Diagnostic Report ===\n",
+        "Total ANCOM calls attempted: ", ancom_call_count, "\n",
+        "Successful ANCOM calls: ", ancom_success_count, "\n",
+        "Failed ANCOM calls: ", ancom_call_count - ancom_success_count, "\n"
+      )
+
+      if (ancom_call_count > 0 && ancom_success_count == 0) {
+        cat("\n⚠️  WARNING: All ANCOM calls failed. Root cause likely: ANCOMBC/CVXR version incompatibility.\n")
+        cat("   Your CVXR version does not export 'solve', which newer ANCOMBC versions require.\n")
+        cat("   See errors below (if any):\n\n")
+      }
+
+      if (length(ancom_failure_log) > 0) {
+        cat("--- ANCOM Error Log ---\n")
+        cat(paste(head(ancom_failure_log, 10), collapse = "\n\n"))
+        cat("\n\n--- RECOMMENDED FIX ---\n")
+        cat("Option 1: Update CVXR to a version that exports solve, OR\n")
+        cat("Option 2: Update ANCOMBC to a newer version compatible with current CVXR, OR\n")
+        cat("Option 3: Downgrade CVXR to a version that exports solve.\n\n")
+      }
+    } else {
+      cat("\n⚠️  ANCOMBC was not available, so ANCOM analysis was skipped.\n")
+      cat("   Only ALDEx2 results will be saved.\n\n")
+    }
+
     res.all <- bind_rows(res_all)
-    res.all.sig <- res.all %>% filter(wi.eBH < 0.05)
+    res.all.sig <- res.all %>% 
+      filter(wi.eBH < 0.05, abs(effect) >= aldex_effect_size_threshold)
 
     ancom.all <- bind_rows(ancom_all)
+    if (nrow(ancom.all) == 0) {
+      ancom.all <- tibble(ASV = character(), group = character(), Study = character(), direct = character())
+    }
     ancom.all.sig <- ancom.all %>% filter(direct %in% c("Positive", "Negative"))
+
+    res.all.group_within_sex <- bind_rows(res_all_group_within_sex)
+    res.all.group_within_sex.sig <- res.all.group_within_sex %>% 
+      filter(wi.eBH < 0.05, abs(effect) >= aldex_effect_size_threshold)
+
+    if (ancombc_available) {
+      ancom.all <- bind_rows(ancom_all)
+      if (nrow(ancom.all) == 0) {
+        ancom.all <- tibble(ASV = character(), group = character(), Study = character(), direct = character())
+      }
+      ancom.all.sig <- ancom.all %>% filter(direct %in% c("Positive", "Negative"))
+
+      ancom.all.group_within_sex <- bind_rows(ancom_all_group_within_sex)
+      if (nrow(ancom.all.group_within_sex) == 0) {
+        ancom.all.group_within_sex <- tibble(ASV = character(), Sex = character(), Study = character(), Contrast = character(), direct = character())
+      }
+      ancom.all.group_within_sex.sig <- ancom.all.group_within_sex %>% filter(direct %in% c("Positive", "Negative"))
+    }
 
     write.csv(res.all, here("results", "res.all.combined.csv"), row.names = FALSE)
     write.csv(res.all.sig, here("results", "res.all.combined.sig.csv"), row.names = FALSE)
-    write.csv(ancom.all, here("results", "ancom.all.combined_sex.csv"), row.names = FALSE)
-    write.csv(ancom.all.sig, here("results", "ancom.all.combined.sig_sex.csv"), row.names = FALSE)
+    write.csv(res.all.group_within_sex, here("results", "res.all.combined.group_within_sex.csv"), row.names = FALSE)
+    write.csv(res.all.group_within_sex.sig, here("results", "res.all.combined.sig.group_within_sex.csv"), row.names = FALSE)
 
-    if (nrow(res.all.sig) > 0 && nrow(ancom.all.sig) > 0) {
+    if (ancombc_available) {
+      write.csv(ancom.all, here("results", "ancom.all.combined_sex.csv"), row.names = FALSE)
+      write.csv(ancom.all.sig, here("results", "ancom.all.combined.sig_sex.csv"), row.names = FALSE)
+      write.csv(ancom.all.group_within_sex, here("results", "ancom.all.combined.group_within_sex.csv"), row.names = FALSE)
+      write.csv(ancom.all.group_within_sex.sig, here("results", "ancom.all.combined.sig.group_within_sex.csv"), row.names = FALSE)
+    }
+
+    if (ancombc_available && nrow(res.all.sig) > 0 && nrow(ancom.all.sig) > 0) {
       res.all.sig <- res.all.sig %>% mutate(id = paste(Group, Study, direct, sep = "_"))
       ancom.all.sig <- ancom.all.sig %>% mutate(id = paste(group, Study, direct, sep = "_"))
 
@@ -1259,11 +2272,36 @@ if (run_daa_phase) {
       write.csv(both.sig, here("results", "both.sig_sex.csv"), row.names = FALSE)
     }
 
-    daa_sig_counts <- bind_rows(
-      res.all.sig %>% mutate(method = "ALDEx2") %>% dplyr::select(method, Study),
-      ancom.all.sig %>% mutate(method = "ANCOM") %>% dplyr::select(method, Study)
-    ) %>%
-      count(method, Study, name = "n_sig")
+    if (ancombc_available && nrow(res.all.group_within_sex.sig) > 0 && nrow(ancom.all.group_within_sex.sig) > 0) {
+      res.gws <- res.all.group_within_sex.sig %>% mutate(id = paste(Sex, Study, direct, sep = "_"))
+      ancom.gws <- ancom.all.group_within_sex.sig %>% mutate(id = paste(Sex, Study, direct, sep = "_"))
+
+      common_ids_gws <- intersect(res.gws$id, ancom.gws$id)
+      overlap_a_gws <- res.gws %>% filter(id %in% common_ids_gws) %>% pull(Row.names)
+      overlap_b_gws <- ancom.gws %>% filter(id %in% common_ids_gws) %>% pull(Row.names)
+
+      both.sig.gws <- res.gws %>% filter(Row.names %in% intersect(overlap_a_gws, overlap_b_gws))
+      write.csv(both.sig.gws, here("results", "both.sig_group_within_sex.csv"), row.names = FALSE)
+    }
+
+    # Build daa_sig_counts with ALDEx2 and optionally ANCOM if available
+    daa_sig_counts_list <- list(
+      res.all.sig %>% mutate(method = "ALDEx2", contrast = "sex_within_subgroup") %>% dplyr::select(method, contrast, Study),
+      res.all.group_within_sex.sig %>% mutate(method = "ALDEx2", contrast = "group_general_within_sex") %>% dplyr::select(method, contrast, Study)
+    )
+
+    if (ancombc_available) {
+      daa_sig_counts_list <- c(
+        daa_sig_counts_list,
+        list(
+          ancom.all.sig %>% mutate(method = "ANCOM", contrast = "sex_within_subgroup") %>% dplyr::select(method, contrast, Study),
+          ancom.all.group_within_sex.sig %>% mutate(method = "ANCOM", contrast = "group_general_within_sex") %>% dplyr::select(method, contrast, Study)
+        )
+      )
+    }
+
+    daa_sig_counts <- bind_rows(daa_sig_counts_list) %>%
+      count(method, contrast, Study, name = "n_sig")
 
     write.csv(daa_sig_counts, here("results", "daa_significant_counts_by_study.csv"), row.names = FALSE)
   } else {
@@ -1272,15 +2310,19 @@ if (run_daa_phase) {
       stop("Missing results/daa_significant_counts_by_study.csv. Set run_daa_models <- TRUE once.")
     }
     daa_sig_counts <- read.csv(daa_counts_file, stringsAsFactors = FALSE)
+    if (!"contrast" %in% names(daa_sig_counts)) {
+      daa_sig_counts$contrast <- "sex_within_subgroup"
+    }
   }
 
   if (run_daa_plots) {
     p_daa_sig_counts <- daa_sig_counts %>%
       ggplot(aes(x = reorder(Study, n_sig), y = n_sig, fill = method)) +
       geom_col(position = "dodge") +
+      facet_wrap(~contrast, ncol = 1) +
       coord_flip() +
       labs(
-        title = "Significant Taxa Counts by Study and Method",
+        title = "Significant Taxa Counts by Study, Method, and Contrast",
         x = NULL,
         y = "Number of significant taxa",
         fill = "Method"
@@ -1288,6 +2330,148 @@ if (run_daa_phase) {
       theme_bw()
 
     ggsave(here("results", "daa_significant_counts_by_study.png"), p_daa_sig_counts, width = 10, height = 8, dpi = 300)
+
+    # ========== Additional visualizations for ALDEx2 results ==========
+    
+    # Helper function to create volcano plots for each contrast
+    plot_aldex_volcano <- function(data_sig, title_text, subtitle_text) {
+      data_sig <- data_sig %>%
+        mutate(
+          taxa_label = paste0(Genus, " (", Family, ")"),
+          taxa_label = ifelse(is.na(Genus), Species, taxa_label)
+        )
+      
+      ggplot(data_sig, aes(x = effect, y = -log10(wi.eBH))) +
+        geom_point(aes(color = direct), alpha = 0.7, size = 2) +
+        geom_vline(xintercept = c(-aldex_effect_size_threshold, aldex_effect_size_threshold), 
+                   linetype = "dashed", color = "grey50", alpha = 0.5) +
+        geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey50", alpha = 0.5) +
+        scale_color_manual(values = c(Positive = "#B2182B", Negative = "#2166AC", `NA` = "grey70"), name = "Direction") +
+        labs(
+          title = title_text,
+          subtitle = subtitle_text,
+          x = "Effect size (log scale)",
+          y = "-log10(adjusted p-value)"
+        ) +
+        theme_bw(base_size = 10) +
+        theme(plot.subtitle = element_text(size = 9, color = "grey40"))
+    }
+    
+    # Plot 1: Sex contrast (male vs female within control/treatment)
+    if (nrow(res.all.sig) > 0) {
+      p_sex_volcano <- plot_aldex_volcano(
+        res.all.sig,
+        title = "Sex Contrast: Differential Abundance (Male vs. Female)",
+        subtitle = paste0("Effect size threshold: |effect| >= ", aldex_effect_size_threshold, "; adjusted p < 0.05")
+      )
+      ggsave(here("results", "aldex_volcano_sex_contrast.png"), p_sex_volcano, width = 10, height = 8, dpi = 300)
+      
+      # Summary table by study+direction
+      sex_summary <- res.all.sig %>%
+        group_by(Study, direct) %>%
+        summarise(n_taxa = n(), .groups = "drop") %>%
+        pivot_wider(names_from = direct, values_from = n_taxa, values_fill = 0)
+      
+      write.csv(sex_summary, here("results", "aldex_sex_contrast_summary.csv"), row.names = FALSE)
+    }
+    
+    # Plot 2: Group contrast (control vs treatment within sex)
+    if (nrow(res.all.group_within_sex.sig) > 0) {
+      p_group_volcano <- plot_aldex_volcano(
+        res.all.group_within_sex.sig,
+        title = "Group Contrast: Differential Abundance (Control vs. Treatment)",
+        subtitle = paste0("Effect size threshold: |effect| >= ", aldex_effect_size_threshold, "; adjusted p < 0.05")
+      )
+      ggsave(here("results", "aldex_volcano_group_contrast.png"), p_group_volcano, width = 10, height = 8, dpi = 300)
+      
+      # Summary by study+sex+direction
+      group_summary <- res.all.group_within_sex.sig %>%
+        group_by(Study, Sex, direct) %>%
+        summarise(n_taxa = n(), .groups = "drop") %>%
+        pivot_wider(names_from = direct, values_from = n_taxa, values_fill = 0)
+      
+      write.csv(group_summary, here("results", "aldex_group_contrast_summary.csv"), row.names = FALSE)
+    }
+    
+    # Plot 3: Forest-plot style visualization of top differential taxa across studies
+    if (nrow(res.all.sig) > 0) {
+      # Get top taxa by effect size
+      top_taxa_sex <- res.all.sig %>%
+        group_by(ASV) %>%
+        slice_max(abs(effect), n = 1) %>%
+        ungroup() %>%
+        slice_max(abs(effect), n = 12)
+      
+      if (nrow(top_taxa_sex) > 0) {
+        forest_data <- res.all.sig %>%
+          filter(ASV %in% top_taxa_sex$ASV) %>%
+          mutate(
+            taxa_label = paste0(Genus, " (", Family, ")")
+          ) %>%
+          arrange(effect)
+        
+        p_forest_sex <- forest_data %>%
+          ggplot(aes(x = effect, y = reorder(paste(taxa_label, Study, sep = " | "), effect))) +
+          geom_vline(xintercept = 0, linetype = "solid", color = "black", linewidth = 0.3) +
+          geom_point(aes(color = direct, size = -log10(wi.eBH)), alpha = 0.7) +
+          geom_errorbarh(
+            aes(xmin = effect - 0.5, xmax = effect + 0.5, color = direct),
+            height = 0.3, alpha = 0.4
+          ) +
+          scale_color_manual(values = c(Positive = "#B2182B", Negative = "#2166AC", `NA` = "grey70")) +
+          scale_size(name = "-log10(p-adj)", range = c(1, 5)) +
+          labs(
+            title = "Top Differential Abundance Taxa: Sex Contrast",
+            subtitle = "Points sized by adjusted p-value significance",
+            x = "Effect size (log scale)",
+            y = NULL
+          ) +
+          theme_bw() +
+          theme(axis.text.y = element_text(size = 8))
+        
+        ggsave(here("results", "aldex_forest_sex_contrast.png"), p_forest_sex, width = 12, height = 8, dpi = 300)
+      }
+    }
+    
+    # Plot 4: Forest-plot for group contrast
+    if (nrow(res.all.group_within_sex.sig) > 0) {
+      top_taxa_group <- res.all.group_within_sex.sig %>%
+        group_by(ASV) %>%
+        slice_max(abs(effect), n = 1) %>%
+        ungroup() %>%
+        slice_max(abs(effect), n = 12)
+      
+      if (nrow(top_taxa_group) > 0) {
+        forest_data_group <- res.all.group_within_sex.sig %>%
+          filter(ASV %in% top_taxa_group$ASV) %>%
+          mutate(
+            taxa_label = paste0(Genus, " (", Family, ")")
+          ) %>%
+          arrange(effect)
+        
+        p_forest_group <- forest_data_group %>%
+          ggplot(aes(x = effect, y = reorder(paste(taxa_label, Study, Sex, sep = " | "), effect))) +
+          geom_vline(xintercept = 0, linetype = "solid", color = "black", linewidth = 0.3) +
+          geom_point(aes(color = direct, size = -log10(wi.eBH)), alpha = 0.7) +
+          geom_errorbarh(
+            aes(xmin = effect - 0.5, xmax = effect + 0.5, color = direct),
+            height = 0.3, alpha = 0.4
+          ) +
+          scale_color_manual(values = c(Positive = "#B2182B", Negative = "#2166AC", `NA` = "grey70")) +
+          scale_size(name = "-log10(p-adj)", range = c(1, 5)) +
+          labs(
+            title = "Top Differential Abundance Taxa: Group Contrast (Control vs Treatment)",
+            subtitle = "Points sized by adjusted p-value significance; faceted by sex",
+            x = "Effect size (log scale)",
+            y = NULL
+          ) +
+          facet_wrap(~Sex) +
+          theme_bw() +
+          theme(axis.text.y = element_text(size = 8))
+        
+        ggsave(here("results", "aldex_forest_group_contrast.png"), p_forest_group, width = 14, height = 9, dpi = 300)
+      }
+    }
 
     p_daa_sig_counts
   } else {
@@ -1833,6 +3017,11 @@ Expected output files generated by this notebook:
 - `results/ancom.all.combined_sex.csv`
 - `results/ancom.all.combined.sig_sex.csv`
 - `results/both.sig_sex.csv`
+- `results/res.all.combined.group_within_sex.csv`
+- `results/res.all.combined.sig.group_within_sex.csv`
+- `results/ancom.all.combined.group_within_sex.csv`
+- `results/ancom.all.combined.sig.group_within_sex.csv`
+- `results/both.sig_group_within_sex.csv`
 - `results/daa_significant_counts_by_study.csv`
 - `results/daa_significant_counts_by_study.png`
 - `results/taxa_diversity_association_models.csv`
@@ -1866,7 +3055,7 @@ figure_index <- tibble::tribble(
   "Sensitivity", "Alpha LOO influence (lnVR)", "results/meta_leave_one_out_influence_alpha_lnvr.png", "LOO influence for alpha lnVR with all metrics faceted in one figure.",
   "Sensitivity", "Beta LOO influence (lnRR)", "results/meta_leave_one_out_influence_beta_lnrr.png", "LOO influence for beta lnRR with all metrics faceted in one figure.",
   "Sensitivity", "Leave-one-out influence plot index", "results/meta_leave_one_out_plot_index.csv", "Manifest of one LOO influence plot per effect-size type (alpha) and one for beta lnRR.",
-  "DAA", "Significant taxa counts by study", "results/daa_significant_counts_by_study.png", "Per-study significant taxa counts from ALDEx2 and ANCOM.",
+  "DAA", "Significant taxa counts by study", "results/daa_significant_counts_by_study.png", "Per-study significant taxa counts from ALDEx2 and ANCOM, faceted by contrast (sex within subgroup vs group_general within sex).",
   "DAA", "Taxa-diversity association summary", "results/taxa_diversity_association_summary.png", "Significant taxa-abundance associations with alpha diversity for both top-25 and top-100 taxa settings, including sex and treatment interaction terms.",
   "DAA", "Top interaction taxa plot index", "results/taxa_diversity_top_interaction_plot_index.csv", "Manifest of separate top-interaction taxa plots for each top_n_taxa setting and interaction type."
 )
@@ -1902,6 +3091,11 @@ table_index <- tibble::tribble(
   "DAA", "ANCOM combined results", "results/ancom.all.combined_sex.csv", "All ANCOM differential abundance results.",
   "DAA", "ANCOM significant results", "results/ancom.all.combined.sig_sex.csv", "ANCOM significant taxa only.",
   "DAA", "Overlap significant taxa", "results/both.sig_sex.csv", "Taxa significant in both ALDEx2 and ANCOM.",
+  "DAA", "ALDEx2 group-within-sex results", "results/res.all.combined.group_within_sex.csv", "ALDEx2 treatment-vs-control differential abundance results within each sex and study.",
+  "DAA", "ALDEx2 group-within-sex significant", "results/res.all.combined.sig.group_within_sex.csv", "Significant ALDEx2 taxa for treatment-vs-control within each sex and study.",
+  "DAA", "ANCOM group-within-sex results", "results/ancom.all.combined.group_within_sex.csv", "ANCOM treatment-vs-control differential abundance results within each sex and study.",
+  "DAA", "ANCOM group-within-sex significant", "results/ancom.all.combined.sig.group_within_sex.csv", "Significant ANCOM taxa for treatment-vs-control within each sex and study.",
+  "DAA", "Overlap taxa group-within-sex", "results/both.sig_group_within_sex.csv", "Taxa significant in both ALDEx2 and ANCOM for treatment-vs-control within each sex and study.",
   "DAA", "Significant counts by study", "results/daa_significant_counts_by_study.csv", "Per-study count of significant taxa by method.",
   "DAA", "Taxa-diversity association models", "results/taxa_diversity_association_models.csv", "Per-taxon linear models of diversity ~ abundance with sex and treatment interaction terms.",
   "DAA", "Taxa-diversity association summary", "results/taxa_diversity_association_summary.csv", "Count of significant taxa-association terms by alpha diversity metric for top-25 and top-100 taxa settings.",

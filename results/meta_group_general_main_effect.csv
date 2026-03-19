@@ -1,0 +1,5 @@
+"domain","stats","n_rows","n_studies","n_metrics","n_groups","chosen_random_model","random_selection_reason","random_lrt","random_lrt_pval","delta_aic_hetero_minus_homo","delta_bic_hetero_minus_homo","lrt","pval","group_general_sig","status","interaction_sig","preferred_interpretation"
+"alpha","lnCVR",639,22,6,2,"homoscedastic","default_simpler_or_insufficient_support",NA,NA,-9.73159330897033e-11,-9.70885594142601e-11,2.55936536571551,0.109642589460731,FALSE,"ok",FALSE,"Check metric-specific summaries"
+"alpha","lnVR",639,22,6,2,"homoscedastic","default_simpler_or_insufficient_support",NA,NA,4.14956957683899e-11,4.13820089306682e-11,2.21338889973049,0.136817825897072,FALSE,"ok",FALSE,"Check metric-specific summaries"
+"alpha","lnRR",642,22,6,2,"homoscedastic","default_simpler_or_insufficient_support",NA,NA,-2.1736923372373e-10,-2.1736923372373e-10,1.74699910737763,0.186254431537367,FALSE,"ok",FALSE,"Check metric-specific summaries"
+"beta","lnRR",504,22,4,2,"homoscedastic","default_simpler_or_insufficient_support",NA,NA,8.6174622992985e-11,8.6174622992985e-11,2.99059887423573,0.0837491905239203,FALSE,"ok",FALSE,"Check metric-specific summaries"

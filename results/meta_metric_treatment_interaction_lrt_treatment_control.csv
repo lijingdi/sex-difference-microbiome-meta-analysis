@@ -1,0 +1,5 @@
+"domain","stats","moderator","n_rows","n_studies","n_metrics","n_levels","lrt","pval","interaction_sig","status","random_structure","aic_homo","aic_hetero"
+"alpha_treatment_control","lnCVR","Sex",762,15,6,2,12.1380818493571,0.0329439510129474,TRUE,"ok","homoscedastic_obs",1830.34743489217,1830.34743489219
+"alpha_treatment_control","lnVR","Sex",762,15,6,2,13.2911244685315,0.0207981203126549,TRUE,"ok","homoscedastic_obs",1779.43075833693,1779.43075833693
+"alpha_treatment_control","lnRR","Sex",765,15,6,2,0,1,FALSE,"ok","homoscedastic_obs",-240.103974233436,-240.103974233424
+"beta_treatment_control","lnRR","Sex",532,15,4,2,0.689634786186843,0.875639201979717,FALSE,"ok","heteroscedastic_metric_obs",715.511996740625,715.511996740217
